@@ -5,3 +5,4 @@ edition = "2021"
 
 [dependencies]
 sdl2 = "0.37"
+stb_image = "0.3"
