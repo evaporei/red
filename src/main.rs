@@ -6,6 +6,13 @@ use sdl2::surface::Surface;
 use stb_image::stb_image::stbi_load;
 use std::ffi::CString;
 
+const FONT_WIDTH: usize = 128;
+const FONT_HEIGHT: usize = 64;
+const FONT_COLS: usize = 18;
+const FONT_ROWS: usize = 7;
+const FONT_CHAR_WIDTH: usize = FONT_WIDTH / FONT_COLS;
+const FONT_CHAR_HEIGHT: usize = FONT_HEIGHT / FONT_ROWS;
+
 fn load_img(file_path: &str) -> (Vec<u8>, i32, i32) {
     let c_path = CString::new(file_path).unwrap();
 
@@ -45,6 +52,66 @@ fn surface_from_file(pixels: &mut Vec<u8>, width: i32, height: i32) -> Result<Su
     )
 }
 
+#[derive(Copy, Clone)]
+struct Vec2f {
+    pub x: f32,
+    pub y: f32,
+}
+
+fn vec2f(x: f32, y: f32) -> Vec2f {
+    Vec2f { x, y }
+}
+
+fn render_char(
+    canvas: &mut sdl2::render::WindowCanvas,
+    font: &mut sdl2::render::Texture<'_>,
+    c: u8,
+    pos: Vec2f,
+    color: u32,
+    scale: f32,
+) -> Result<(), String> {
+    let idx = (c - b' ') as usize;
+    let col = idx % FONT_COLS;
+    let row = idx / FONT_COLS;
+
+    let src = Rect::new(
+        col as i32 * FONT_CHAR_WIDTH as i32,
+        row as i32 * FONT_CHAR_HEIGHT as i32,
+        FONT_CHAR_WIDTH as u32,
+        FONT_CHAR_HEIGHT as u32,
+    );
+
+    let dst = Rect::new(
+        pos.x.floor() as i32,
+        pos.y.floor() as i32,
+        (FONT_CHAR_WIDTH as f32 * scale).floor() as u32,
+        (FONT_CHAR_HEIGHT as f32 * scale).floor() as u32,
+    );
+
+    font.set_color_mod(
+        ((color >> (8 * 2)) & 0xff) as u8,
+        ((color >> (8 * 1)) & 0xff) as u8,
+        ((color >> (8 * 0)) & 0xff) as u8,
+    );
+    canvas.copy(font, src, dst)
+}
+
+fn render_text(
+    canvas: &mut sdl2::render::WindowCanvas,
+    font: &mut sdl2::render::Texture<'_>,
+    text: &str,
+    pos: Vec2f,
+    color: u32,
+    scale: f32,
+) -> Result<(), String> {
+    let mut pen = pos;
+    for ch in text.bytes() {
+        render_char(canvas, font, ch, pen, color, scale)?;
+        pen.x += FONT_CHAR_WIDTH as f32 * scale;
+    }
+    Ok(())
+}
+
 fn main() -> Result<(), String> {
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
@@ -65,10 +132,9 @@ fn main() -> Result<(), String> {
     let (mut pixels, width, height) = load_img("charmap-oldschool_white.png");
     let font_surface = surface_from_file(&mut pixels, width, height)?;
     let texture_creator = canvas.texture_creator();
-    let font_texture = font_surface
+    let mut font_texture = font_surface
         .as_texture(&texture_creator)
         .map_err(|e| e.to_string())?;
-    let font_rect = Rect::new(0, 0, font_surface.width(), font_surface.height());
 
     let mut event_pump = sdl_context.event_pump()?;
 
@@ -84,7 +150,15 @@ fn main() -> Result<(), String> {
         canvas.set_draw_color(Color::BLACK);
         canvas.clear();
 
-        canvas.copy(&font_texture, font_rect, font_rect)?;
+        render_text(
+            &mut canvas,
+            &mut font_texture,
+            "hello world!",
+            vec2f(0.0, 0.0),
+            0xffffff,
+            5.0,
+        )?;
+
         canvas.present();
     }
 
