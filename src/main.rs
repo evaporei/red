@@ -62,12 +62,9 @@ struct Font<'a> {
 
 impl<'a> Font<'a> {
     fn new(spritesheet: sdl2::render::Texture<'a>) -> Self {
-        let mut glyph_table: [Rect; GLYPH_HIGH - GLYPH_LOW + 1] = unsafe { std::mem::zeroed() };
-
-        for i in GLYPH_LOW..GLYPH_HIGH {
-            let idx = (i as u8 - b' ') as usize;
-            let col = idx % FONT_COLS;
-            let row = idx / FONT_COLS;
+        let glyph_table = std::array::from_fn(|i| {
+            let col = i % FONT_COLS;
+            let row = i / FONT_COLS;
 
             // view into the texture
             let src = Rect::new(
@@ -76,9 +73,8 @@ impl<'a> Font<'a> {
                 FONT_CHAR_WIDTH as u32,
                 FONT_CHAR_HEIGHT as u32,
             );
-
-            glyph_table[idx] = src;
-        };
+            src
+        });
 
         Self {
             spritesheet,
