@@ -121,16 +121,11 @@ fn render_text(
     font: &mut Font,
     text: &str,
     pos: Vec2f,
-    color: u32,
+    color: Color,
     scale: f32,
 ) -> Result<(), String> {
-    font.spritesheet.set_color_mod(
-        ((color >> (8 * 3)) & 0xff) as u8,
-        ((color >> (8 * 2)) & 0xff) as u8,
-        ((color >> (8 * 1)) & 0xff) as u8,
-    );
-    font.spritesheet
-        .set_alpha_mod(((color >> (8 * 0)) & 0xff) as u8);
+    font.spritesheet.set_color_mod(color.r, color.g, color.b);
+    font.spritesheet.set_alpha_mod(color.a);
 
     let mut pen = pos;
     for ch in text.bytes() {
@@ -197,7 +192,7 @@ fn main() -> Result<(), String> {
             &mut font,
             &buffer,
             vec2f(0.0, 0.0),
-            0xffffffff,
+            Color::WHITE,
             5.0,
         )?;
 
