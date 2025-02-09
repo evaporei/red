@@ -74,6 +74,7 @@ fn render_char(
     let col = idx % FONT_COLS;
     let row = idx / FONT_COLS;
 
+    // view into the texture
     let src = Rect::new(
         col as i32 * FONT_CHAR_WIDTH as i32,
         row as i32 * FONT_CHAR_HEIGHT as i32,
@@ -81,6 +82,7 @@ fn render_char(
         FONT_CHAR_HEIGHT as u32,
     );
 
+    // where in the screen/window
     let dst = Rect::new(
         pos.x.floor() as i32,
         pos.y.floor() as i32,
@@ -89,10 +91,11 @@ fn render_char(
     );
 
     font.set_color_mod(
+        ((color >> (8 * 3)) & 0xff) as u8,
         ((color >> (8 * 2)) & 0xff) as u8,
         ((color >> (8 * 1)) & 0xff) as u8,
-        ((color >> (8 * 0)) & 0xff) as u8,
     );
+    font.set_alpha_mod(((color >> (8 * 0)) & 0xff) as u8);
     canvas.copy(font, src, dst)
 }
 
@@ -155,7 +158,7 @@ fn main() -> Result<(), String> {
             &mut font_texture,
             "hello world!",
             vec2f(0.0, 0.0),
-            0xffffff,
+            0xff0000ff,
             5.0,
         )?;
 
