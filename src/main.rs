@@ -1,9 +1,9 @@
 use sdl2::event::Event;
+use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
 use sdl2::pixels::PixelFormatEnum;
 use sdl2::rect::Rect;
 use sdl2::surface::Surface;
-use sdl2::keyboard::Keycode;
 use stb_image::stb_image::stbi_load;
 use std::ffi::CString;
 
@@ -129,7 +129,8 @@ fn render_text(
         ((color >> (8 * 2)) & 0xff) as u8,
         ((color >> (8 * 1)) & 0xff) as u8,
     );
-    font.spritesheet.set_alpha_mod(((color >> (8 * 0)) & 0xff) as u8);
+    font.spritesheet
+        .set_alpha_mod(((color >> (8 * 0)) & 0xff) as u8);
 
     let mut pen = pos;
     for ch in text.bytes() {
@@ -183,7 +184,7 @@ fn main() -> Result<(), String> {
                 },
                 Event::TextInput { text, .. } => {
                     buffer.push_str(&text);
-                },
+                }
                 _ => {}
             }
         }
