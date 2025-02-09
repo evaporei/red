@@ -52,12 +52,12 @@ fn surface_from_file(pixels: &mut Vec<u8>, width: i32, height: i32) -> Result<Su
     )
 }
 
-const GLYPH_LOW: usize = 32;
-const GLYPH_HIGH: usize = 126;
+const ASCII_DISPLAY_LOW: u8 = 32;
+const ASCII_DISPLAY_HIGH: u8 = 126;
 
 struct Font<'a> {
     spritesheet: sdl2::render::Texture<'a>,
-    glyph_table: [Rect; GLYPH_HIGH - GLYPH_LOW + 1],
+    glyph_table: [Rect; (ASCII_DISPLAY_HIGH - ASCII_DISPLAY_LOW + 1) as usize],
 }
 
 impl<'a> Font<'a> {
@@ -100,6 +100,8 @@ fn render_char(
     pos: Vec2f,
     scale: f32,
 ) -> Result<(), String> {
+    assert!(c >= ASCII_DISPLAY_LOW);
+    assert!(c <= ASCII_DISPLAY_HIGH);
     let idx = (c - b' ') as usize;
 
     // where in the screen/window
