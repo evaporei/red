@@ -7,10 +7,13 @@ use sdl2::surface::Surface;
 use stb_image::stb_image::stbi_load;
 use std::ffi::CString;
 
+const FONT_SCALE: f32 = 5.0;
 const FONT_WIDTH: usize = 128;
 const FONT_HEIGHT: usize = 64;
+
 const FONT_COLS: usize = 18;
 const FONT_ROWS: usize = 7;
+
 const FONT_CHAR_WIDTH: usize = FONT_WIDTH / FONT_COLS;
 const FONT_CHAR_HEIGHT: usize = FONT_HEIGHT / FONT_ROWS;
 
@@ -135,6 +138,20 @@ fn render_text(
     Ok(())
 }
 
+fn render_cursor(
+    canvas: &mut sdl2::render::WindowCanvas,
+    color: Color,
+    cursor: usize,
+) -> Result<(), String> {
+    canvas.set_draw_color(color);
+    canvas.fill_rect(Rect::new(
+        (cursor as f32 * FONT_CHAR_WIDTH as f32 * FONT_SCALE).floor() as i32,
+        0,
+        (FONT_CHAR_WIDTH as f32 * FONT_SCALE) as u32,
+        (FONT_CHAR_HEIGHT as f32 * FONT_SCALE) as u32,
+    ))
+}
+
 fn main() -> Result<(), String> {
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
@@ -164,6 +181,8 @@ fn main() -> Result<(), String> {
     let mut event_pump = sdl_context.event_pump()?;
 
     let mut buffer = String::new();
+    let mut cursor = 0;
+
     let mut quit = false;
     while !quit {
         for event in event_pump.poll_iter() {
@@ -172,13 +191,16 @@ fn main() -> Result<(), String> {
                 Event::KeyDown { keycode, .. } => match keycode {
                     Some(key) => {
                         if key == Keycode::Backspace {
-                            buffer.pop();
+                            if buffer.pop().is_some() {
+                                cursor -= 1;
+                            }
                         }
                     }
                     _ => {}
                 },
                 Event::TextInput { text, .. } => {
                     buffer.push_str(&text);
+                    cursor += text.len();
                 }
                 _ => {}
             }
@@ -193,8 +215,9 @@ fn main() -> Result<(), String> {
             &buffer,
             vec2f(0.0, 0.0),
             Color::WHITE,
-            5.0,
+            FONT_SCALE,
         )?;
+        render_cursor(&mut canvas, Color::WHITE, cursor)?;
 
         canvas.present();
     }
