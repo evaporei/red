@@ -64,7 +64,7 @@ fn vec2f(x: f32, y: f32) -> Vec2f {
 
 fn render_char(
     canvas: &mut sdl2::render::WindowCanvas,
-    font: &mut sdl2::render::Texture<'_>,
+    font: &sdl2::render::Texture<'_>,
     c: u8,
     pos: Vec2f,
     scale: f32,
