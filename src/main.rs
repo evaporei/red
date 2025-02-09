@@ -3,6 +3,7 @@ use sdl2::pixels::Color;
 use sdl2::pixels::PixelFormatEnum;
 use sdl2::rect::Rect;
 use sdl2::surface::Surface;
+use sdl2::keyboard::Keycode;
 use stb_image::stb_image::stbi_load;
 use std::ffi::CString;
 
@@ -172,6 +173,14 @@ fn main() -> Result<(), String> {
         for event in event_pump.poll_iter() {
             match event {
                 Event::Quit { .. } => quit = true,
+                Event::KeyDown { keycode, .. } => match keycode {
+                    Some(key) => {
+                        if key == Keycode::Backspace {
+                            buffer.pop();
+                        }
+                    }
+                    _ => {}
+                },
                 Event::TextInput { text, .. } => {
                     buffer.push_str(&text);
                 },
