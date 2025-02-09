@@ -166,11 +166,15 @@ fn main() -> Result<(), String> {
 
     let mut event_pump = sdl_context.event_pump()?;
 
+    let mut buffer = String::new();
     let mut quit = false;
     while !quit {
         for event in event_pump.poll_iter() {
             match event {
                 Event::Quit { .. } => quit = true,
+                Event::TextInput { text, .. } => {
+                    buffer.push_str(&text);
+                },
                 _ => {}
             }
         }
@@ -181,9 +185,9 @@ fn main() -> Result<(), String> {
         render_text(
             &mut canvas,
             &mut font,
-            "hello world!",
+            &buffer,
             vec2f(0.0, 0.0),
-            0xff0000ff,
+            0xffffffff,
             5.0,
         )?;
 
