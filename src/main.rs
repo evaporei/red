@@ -67,7 +67,6 @@ fn render_char(
     font: &mut sdl2::render::Texture<'_>,
     c: u8,
     pos: Vec2f,
-    color: u32,
     scale: f32,
 ) -> Result<(), String> {
     let idx = (c - b' ') as usize;
@@ -90,12 +89,6 @@ fn render_char(
         (FONT_CHAR_HEIGHT as f32 * scale).floor() as u32,
     );
 
-    font.set_color_mod(
-        ((color >> (8 * 3)) & 0xff) as u8,
-        ((color >> (8 * 2)) & 0xff) as u8,
-        ((color >> (8 * 1)) & 0xff) as u8,
-    );
-    font.set_alpha_mod(((color >> (8 * 0)) & 0xff) as u8);
     canvas.copy(font, src, dst)
 }
 
@@ -107,9 +100,16 @@ fn render_text(
     color: u32,
     scale: f32,
 ) -> Result<(), String> {
+    font.set_color_mod(
+        ((color >> (8 * 3)) & 0xff) as u8,
+        ((color >> (8 * 2)) & 0xff) as u8,
+        ((color >> (8 * 1)) & 0xff) as u8,
+    );
+    font.set_alpha_mod(((color >> (8 * 0)) & 0xff) as u8);
+
     let mut pen = pos;
     for ch in text.bytes() {
-        render_char(canvas, font, ch, pen, color, scale)?;
+        render_char(canvas, font, ch, pen, scale)?;
         pen.x += FONT_CHAR_WIDTH as f32 * scale;
     }
     Ok(())
