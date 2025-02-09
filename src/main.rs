@@ -52,6 +52,41 @@ fn surface_from_file(pixels: &mut Vec<u8>, width: i32, height: i32) -> Result<Su
     )
 }
 
+const GLYPH_LOW: usize = 32;
+const GLYPH_HIGH: usize = 126;
+
+struct Font<'a> {
+    spritesheet: sdl2::render::Texture<'a>,
+    glyph_table: [Rect; GLYPH_HIGH - GLYPH_LOW + 1],
+}
+
+impl<'a> Font<'a> {
+    fn new(spritesheet: sdl2::render::Texture<'a>) -> Self {
+        let mut glyph_table: [Rect; GLYPH_HIGH - GLYPH_LOW + 1] = unsafe { std::mem::zeroed() };
+
+        for i in GLYPH_LOW..GLYPH_HIGH {
+            let idx = (i as u8 - b' ') as usize;
+            let col = idx % FONT_COLS;
+            let row = idx / FONT_COLS;
+
+            // view into the texture
+            let src = Rect::new(
+                col as i32 * FONT_CHAR_WIDTH as i32,
+                row as i32 * FONT_CHAR_HEIGHT as i32,
+                FONT_CHAR_WIDTH as u32,
+                FONT_CHAR_HEIGHT as u32,
+            );
+
+            glyph_table[idx] = src;
+        };
+
+        Self {
+            spritesheet,
+            glyph_table,
+        }
+    }
+}
+
 #[derive(Copy, Clone)]
 struct Vec2f {
     pub x: f32,
@@ -64,22 +99,12 @@ fn vec2f(x: f32, y: f32) -> Vec2f {
 
 fn render_char(
     canvas: &mut sdl2::render::WindowCanvas,
-    font: &sdl2::render::Texture<'_>,
+    font: &Font,
     c: u8,
     pos: Vec2f,
     scale: f32,
 ) -> Result<(), String> {
     let idx = (c - b' ') as usize;
-    let col = idx % FONT_COLS;
-    let row = idx / FONT_COLS;
-
-    // view into the texture
-    let src = Rect::new(
-        col as i32 * FONT_CHAR_WIDTH as i32,
-        row as i32 * FONT_CHAR_HEIGHT as i32,
-        FONT_CHAR_WIDTH as u32,
-        FONT_CHAR_HEIGHT as u32,
-    );
 
     // where in the screen/window
     let dst = Rect::new(
@@ -89,23 +114,23 @@ fn render_char(
         (FONT_CHAR_HEIGHT as f32 * scale).floor() as u32,
     );
 
-    canvas.copy(font, src, dst)
+    canvas.copy(&font.spritesheet, font.glyph_table[idx], dst)
 }
 
 fn render_text(
     canvas: &mut sdl2::render::WindowCanvas,
-    font: &mut sdl2::render::Texture<'_>,
+    font: &mut Font,
     text: &str,
     pos: Vec2f,
     color: u32,
     scale: f32,
 ) -> Result<(), String> {
-    font.set_color_mod(
+    font.spritesheet.set_color_mod(
         ((color >> (8 * 3)) & 0xff) as u8,
         ((color >> (8 * 2)) & 0xff) as u8,
         ((color >> (8 * 1)) & 0xff) as u8,
     );
-    font.set_alpha_mod(((color >> (8 * 0)) & 0xff) as u8);
+    font.spritesheet.set_alpha_mod(((color >> (8 * 0)) & 0xff) as u8);
 
     let mut pen = pos;
     for ch in text.bytes() {
@@ -135,9 +160,11 @@ fn main() -> Result<(), String> {
     let (mut pixels, width, height) = load_img("charmap-oldschool_white.png");
     let font_surface = surface_from_file(&mut pixels, width, height)?;
     let texture_creator = canvas.texture_creator();
-    let mut font_texture = font_surface
+    let font_texture = font_surface
         .as_texture(&texture_creator)
         .map_err(|e| e.to_string())?;
+
+    let mut font = Font::new(font_texture);
 
     let mut event_pump = sdl_context.event_pump()?;
 
@@ -155,7 +182,7 @@ fn main() -> Result<(), String> {
 
         render_text(
             &mut canvas,
-            &mut font_texture,
+            &mut font,
             "hello world!",
             vec2f(0.0, 0.0),
             0xff0000ff,
