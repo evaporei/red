@@ -71,14 +71,12 @@ impl<'a> Font<'a> {
             let col = i % FONT_COLS;
             let row = i / FONT_COLS;
 
-            // view into the texture
-            let src = Rect::new(
+            Rect::new(
                 col as i32 * FONT_CHAR_WIDTH as i32,
                 row as i32 * FONT_CHAR_HEIGHT as i32,
                 FONT_CHAR_WIDTH as u32,
                 FONT_CHAR_HEIGHT as u32,
-            );
-            src
+            )
         });
 
         Self {
@@ -109,6 +107,9 @@ fn render_char(
     assert!(c <= ASCII_DISPLAY_HIGH);
     let idx = (c - b' ') as usize;
 
+    // view into the texture
+    let src = font.glyph_table[idx];
+
     // where in the screen/window
     let dst = Rect::new(
         pos.x.floor() as i32,
@@ -117,7 +118,7 @@ fn render_char(
         (FONT_CHAR_HEIGHT as f32 * scale).floor() as u32,
     );
 
-    canvas.copy(&font.spritesheet, font.glyph_table[idx], dst)
+    canvas.copy(&font.spritesheet, src, dst)
 }
 
 fn set_texture_color(texture: &mut Texture<'_>, color: Color) {
