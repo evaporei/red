@@ -144,14 +144,34 @@ fn render_text(
     Ok(())
 }
 
-fn render_cursor(canvas: &mut WindowCanvas, color: Color, cursor: usize) -> Result<(), String> {
-    canvas.set_draw_color(color);
+fn render_cursor(
+    canvas: &mut WindowCanvas,
+    font: &mut Font,
+    buffer: &str,
+    cursor: usize,
+) -> Result<(), String> {
+    let pos = vec2f(cursor as f32 * FONT_CHAR_WIDTH as f32 * FONT_SCALE, 0.0);
+
+    canvas.set_draw_color(Color::WHITE);
     canvas.fill_rect(Rect::new(
-        (cursor as f32 * FONT_CHAR_WIDTH as f32 * FONT_SCALE).floor() as i32,
-        0,
+        (pos.x).floor() as i32,
+        pos.y.floor() as i32,
         (FONT_CHAR_WIDTH as f32 * FONT_SCALE) as u32,
         (FONT_CHAR_HEIGHT as f32 * FONT_SCALE) as u32,
-    ))
+    ))?;
+
+    set_texture_color(&mut font.spritesheet, Color::RGB(0, 0, 0));
+    if cursor < buffer.len() {
+        render_char(
+            canvas,
+            font,
+            buffer.bytes().nth(cursor).unwrap(),
+            pos,
+            FONT_SCALE,
+        )?;
+    }
+
+    Ok(())
 }
 
 fn main() -> Result<(), String> {
@@ -172,7 +192,8 @@ fn main() -> Result<(), String> {
         .map_err(|e| e.to_string())?;
 
     let (mut pixels, width, height) = load_img("charmap-oldschool_white.png");
-    let font_surface = surface_from_file(&mut pixels, width, height)?;
+    let mut font_surface = surface_from_file(&mut pixels, width, height)?;
+    font_surface.set_color_key(true, Color::RGBA(0, 0, 0, 0))?;
     let texture_creator = canvas.texture_creator();
     let font_texture = font_surface
         .as_texture(&texture_creator)
@@ -230,7 +251,7 @@ fn main() -> Result<(), String> {
             Color::WHITE,
             FONT_SCALE,
         )?;
-        render_cursor(&mut canvas, Color::WHITE, cursor)?;
+        render_cursor(&mut canvas, &mut font, &buffer, cursor)?;
 
         canvas.present();
     }
