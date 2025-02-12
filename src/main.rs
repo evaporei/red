@@ -3,6 +3,7 @@ use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
 use sdl2::pixels::PixelFormatEnum;
 use sdl2::rect::Rect;
+use sdl2::render::{Texture, WindowCanvas};
 use sdl2::surface::Surface;
 use stb_image::stb_image::stbi_load;
 use std::ffi::CString;
@@ -60,12 +61,12 @@ const ASCII_DISPLAY_LOW: u8 = 32;
 const ASCII_DISPLAY_HIGH: u8 = 126;
 
 struct Font<'a> {
-    spritesheet: sdl2::render::Texture<'a>,
+    spritesheet: Texture<'a>,
     glyph_table: [Rect; (ASCII_DISPLAY_HIGH - ASCII_DISPLAY_LOW + 1) as usize],
 }
 
 impl<'a> Font<'a> {
-    fn new(spritesheet: sdl2::render::Texture<'a>) -> Self {
+    fn new(spritesheet: Texture<'a>) -> Self {
         let glyph_table = std::array::from_fn(|i| {
             let col = i % FONT_COLS;
             let row = i / FONT_COLS;
@@ -98,7 +99,7 @@ fn vec2f(x: f32, y: f32) -> Vec2f {
 }
 
 fn render_char(
-    canvas: &mut sdl2::render::WindowCanvas,
+    canvas: &mut WindowCanvas,
     font: &Font,
     c: u8,
     pos: Vec2f,
@@ -119,16 +120,20 @@ fn render_char(
     canvas.copy(&font.spritesheet, font.glyph_table[idx], dst)
 }
 
+fn set_texture_color(texture: &mut Texture<'_>, color: Color) {
+    texture.set_color_mod(color.r, color.g, color.b);
+    texture.set_alpha_mod(color.a);
+}
+
 fn render_text(
-    canvas: &mut sdl2::render::WindowCanvas,
+    canvas: &mut WindowCanvas,
     font: &mut Font,
     text: &str,
     pos: Vec2f,
     color: Color,
     scale: f32,
 ) -> Result<(), String> {
-    font.spritesheet.set_color_mod(color.r, color.g, color.b);
-    font.spritesheet.set_alpha_mod(color.a);
+    set_texture_color(&mut font.spritesheet, color);
 
     let mut pen = pos;
     for ch in text.bytes() {
@@ -138,11 +143,7 @@ fn render_text(
     Ok(())
 }
 
-fn render_cursor(
-    canvas: &mut sdl2::render::WindowCanvas,
-    color: Color,
-    cursor: usize,
-) -> Result<(), String> {
+fn render_cursor(canvas: &mut WindowCanvas, color: Color, cursor: usize) -> Result<(), String> {
     canvas.set_draw_color(color);
     canvas.fill_rect(Rect::new(
         (cursor as f32 * FONT_CHAR_WIDTH as f32 * FONT_SCALE).floor() as i32,
