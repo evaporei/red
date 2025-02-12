@@ -189,13 +189,24 @@ fn main() -> Result<(), String> {
             match event {
                 Event::Quit { .. } => quit = true,
                 Event::KeyDown { keycode, .. } => match keycode {
-                    Some(key) => {
-                        if key == Keycode::Backspace {
+                    Some(key) => match key {
+                        Keycode::Backspace => {
                             if buffer.pop().is_some() {
                                 cursor -= 1;
                             }
                         }
-                    }
+                        Keycode::Left => {
+                            if cursor > 0 {
+                                cursor -= 1;
+                            }
+                        }
+                        Keycode::Right => {
+                            if cursor < buffer.len() {
+                                cursor += 1;
+                            }
+                        }
+                        _ => {}
+                    },
                     _ => {}
                 },
                 Event::TextInput { text, .. } => {
