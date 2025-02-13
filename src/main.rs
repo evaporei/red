@@ -181,6 +181,13 @@ fn buf_insert(buffer: &mut String, text: &str, cursor: &mut usize) {
     *cursor += text.len();
 }
 
+fn buf_remove(buffer: &mut String, cursor: &mut usize) {
+    if !buffer.is_empty() && *cursor > 0 {
+        buffer.remove(*cursor - 1);
+        *cursor -= 1;
+    }
+}
+
 fn move_right(buffer: &str, cursor: &mut usize) {
     if *cursor < buffer.len() {
         *cursor += 1;
@@ -231,12 +238,7 @@ fn main() -> Result<(), String> {
                 Event::Quit { .. } => quit = true,
                 Event::KeyDown { keycode, .. } => match keycode {
                     Some(key) => match key {
-                        Keycode::Backspace => {
-                            if !buffer.is_empty() && cursor > 0 {
-                                buffer.remove(cursor - 1);
-                                cursor -= 1;
-                            }
-                        }
+                        Keycode::Backspace => buf_remove(&mut buffer, &mut cursor),
                         Keycode::Left => move_left(&mut cursor),
                         Keycode::Right => move_right(&buffer, &mut cursor),
                         _ => {}
