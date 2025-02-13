@@ -174,6 +174,13 @@ fn render_cursor(
     Ok(())
 }
 
+fn buf_insert(buffer: &mut String, text: &str, cursor: &mut usize) {
+    for ch in text.chars().rev() {
+        buffer.insert(*cursor, ch);
+    }
+    *cursor += text.len();
+}
+
 fn main() -> Result<(), String> {
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
@@ -214,7 +221,8 @@ fn main() -> Result<(), String> {
                 Event::KeyDown { keycode, .. } => match keycode {
                     Some(key) => match key {
                         Keycode::Backspace => {
-                            if buffer.pop().is_some() {
+                            if !buffer.is_empty() && cursor > 0 {
+                                buffer.remove(cursor - 1);
                                 cursor -= 1;
                             }
                         }
@@ -232,10 +240,7 @@ fn main() -> Result<(), String> {
                     },
                     _ => {}
                 },
-                Event::TextInput { text, .. } => {
-                    buffer.push_str(&text);
-                    cursor += text.len();
-                }
+                Event::TextInput { text, .. } => buf_insert(&mut buffer, &text, &mut cursor),
                 _ => {}
             }
         }
