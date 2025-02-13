@@ -181,6 +181,17 @@ fn buf_insert(buffer: &mut String, text: &str, cursor: &mut usize) {
     *cursor += text.len();
 }
 
+fn move_right(buffer: &str, cursor: &mut usize) {
+    if *cursor < buffer.len() {
+        *cursor += 1;
+    }
+}
+fn move_left(cursor: &mut usize) {
+    if *cursor > 0 {
+        *cursor -= 1;
+    }
+}
+
 fn main() -> Result<(), String> {
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
@@ -226,16 +237,8 @@ fn main() -> Result<(), String> {
                                 cursor -= 1;
                             }
                         }
-                        Keycode::Left => {
-                            if cursor > 0 {
-                                cursor -= 1;
-                            }
-                        }
-                        Keycode::Right => {
-                            if cursor < buffer.len() {
-                                cursor += 1;
-                            }
-                        }
+                        Keycode::Left => move_left(&mut cursor),
+                        Keycode::Right => move_right(&buffer, &mut cursor),
                         _ => {}
                     },
                     _ => {}
