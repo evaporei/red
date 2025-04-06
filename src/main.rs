@@ -249,9 +249,16 @@ fn main() -> Result<(), String> {
                 Event::Quit { .. } => quit = true,
                 Event::KeyDown { keycode, .. } => match keycode {
                     Some(key) => match key {
-                        Keycode::Backspace if cursor.x > 0 => {
-                            cursor.x -= 1;
-                            buffer.lines[cursor.y].remove(cursor.x);
+                        Keycode::Backspace => {
+                            if cursor.x == 0 && cursor.y > 0 {
+                                let right_side = buffer.lines.remove(cursor.y);
+                                cursor.y -= 1;
+                                cursor.x = buffer.lines[cursor.y].chars.len();
+                                buffer.lines[cursor.y].chars.push_str(&right_side.chars);
+                            } else if cursor.x > 0 {
+                                cursor.x -= 1;
+                                buffer.lines[cursor.y].remove(cursor.x);
+                            }
                         }
                         Keycode::Delete if cursor.x < buffer.lines[cursor.y].chars.len() => {
                             buffer.lines[cursor.y].remove(cursor.x)
