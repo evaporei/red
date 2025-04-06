@@ -261,9 +261,10 @@ fn main() -> Result<(), String> {
                             cursor.x += 1
                         }
                         Keycode::Return => {
+                            let new_line = buffer.lines[cursor.y].chars.split_off(cursor.x);
                             cursor.x = 0;
                             cursor.y += 1;
-                            buffer.lines.push(Line::default());
+                            buffer.lines.push(Line { chars: new_line });
                         }
                         _ => {}
                     },
