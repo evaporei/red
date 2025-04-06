@@ -131,15 +131,14 @@ fn set_texture_color(texture: &mut Texture<'_>, color: Color) {
 fn render_text(
     canvas: &mut WindowCanvas,
     font: &mut Font,
-    text: &str,
-    pos: Vector2<f32>,
+    buffer: &Buffer,
     color: Color,
     scale: f32,
 ) -> Result<(), String> {
     set_texture_color(&mut font.spritesheet, color);
 
-    let mut pen = pos;
-    for ch in text.bytes() {
+    let mut pen = Vector2::new(0.0, 0.0);
+    for ch in buffer.lines[0].chars.bytes() {
         render_char(canvas, font, ch, pen, scale)?;
         pen.x += FONT_CHAR_WIDTH as f32 * scale;
     }
@@ -149,10 +148,10 @@ fn render_text(
 fn render_cursor(
     canvas: &mut WindowCanvas,
     font: &mut Font,
-    buffer: &str,
-    cursor: usize,
+    buffer: &Buffer,
+    cursor: Vector2<usize>,
 ) -> Result<(), String> {
-    let pos = Vector2::new(cursor as f32 * FONT_CHAR_WIDTH as f32 * FONT_SCALE, 0.0);
+    let pos = Vector2::new(cursor.x as f32 * FONT_CHAR_WIDTH as f32 * FONT_SCALE, 0.0);
 
     canvas.set_draw_color(Color::WHITE);
     canvas.fill_rect(Rect::new(
@@ -163,11 +162,11 @@ fn render_cursor(
     ))?;
 
     set_texture_color(&mut font.spritesheet, Color::RGB(0, 0, 0));
-    if cursor < buffer.len() {
+    if cursor.x < buffer.lines[cursor.y].chars.len() {
         render_char(
             canvas,
             font,
-            buffer.bytes().nth(cursor).unwrap(),
+            buffer.lines[cursor.y].chars.bytes().nth(cursor.x).unwrap(),
             pos,
             FONT_SCALE,
         )?;
@@ -267,15 +266,8 @@ fn main() -> Result<(), String> {
         canvas.set_draw_color(Color::BLACK);
         canvas.clear();
 
-        render_text(
-            &mut canvas,
-            &mut font,
-            &buffer.lines[0].chars,
-            Vector2::new(0.0, 0.0),
-            Color::WHITE,
-            FONT_SCALE,
-        )?;
-        render_cursor(&mut canvas, &mut font, &buffer.lines[0].chars, cursor.x)?;
+        render_text(&mut canvas, &mut font, &buffer, Color::WHITE, FONT_SCALE)?;
+        render_cursor(&mut canvas, &mut font, &buffer, cursor)?;
 
         canvas.present();
     }
