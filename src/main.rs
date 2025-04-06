@@ -131,14 +131,14 @@ fn set_texture_color(texture: &mut Texture<'_>, color: Color) {
 fn render_text(
     canvas: &mut WindowCanvas,
     font: &mut Font,
-    buffer: &Buffer,
+    editor: &Editor,
     color: Color,
     scale: f32,
 ) -> Result<(), String> {
     set_texture_color(&mut font.spritesheet, color);
 
     let mut pen = Vector2::new(0.0, 0.0);
-    for line in &buffer.lines {
+    for line in &editor.lines {
         for ch in line.chars.bytes() {
             render_char(canvas, font, ch, pen, scale)?;
             pen.x += FONT_CHAR_WIDTH as f32 * scale;
@@ -152,12 +152,11 @@ fn render_text(
 fn render_cursor(
     canvas: &mut WindowCanvas,
     font: &mut Font,
-    buffer: &Buffer,
-    cursor: Vector2<usize>,
+    editor: &Editor,
 ) -> Result<(), String> {
     let pos = Vector2::new(
-        cursor.x as f32 * FONT_CHAR_WIDTH as f32 * FONT_SCALE,
-        cursor.y as f32 * FONT_CHAR_HEIGHT as f32 * FONT_SCALE,
+        editor.cursor.x as f32 * FONT_CHAR_WIDTH as f32 * FONT_SCALE,
+        editor.cursor.y as f32 * FONT_CHAR_HEIGHT as f32 * FONT_SCALE,
     );
 
     canvas.set_draw_color(Color::WHITE);
@@ -169,11 +168,15 @@ fn render_cursor(
     ))?;
 
     set_texture_color(&mut font.spritesheet, Color::RGB(0, 0, 0));
-    if cursor.x < buffer.lines[cursor.y].chars.len() {
+    if editor.cursor.x < editor.lines[editor.cursor.y].chars.len() {
         render_char(
             canvas,
             font,
-            buffer.lines[cursor.y].chars.bytes().nth(cursor.x).unwrap(),
+            editor.lines[editor.cursor.y]
+                .chars
+                .bytes()
+                .nth(editor.cursor.x)
+                .unwrap(),
             pos,
             FONT_SCALE,
         )?;
@@ -198,26 +201,28 @@ impl Line {
     }
 }
 
-struct Buffer {
+struct Editor {
     lines: Vec<Line>,
+    cursor: Vector2<usize>,
 }
 
-impl Buffer {
+impl Editor {
     fn new() -> Self {
         Self {
             lines: vec![Line::default()],
+            cursor: Vector2::new(0, 0),
         }
     }
 }
 
 use std::io::Write;
 
-fn save(buffer: &Buffer) -> std::io::Result<()> {
+fn save(editor: &Editor) -> std::io::Result<()> {
     let mut file = std::fs::File::options()
         .write(true)
         .truncate(true)
         .open("output")?;
-    for line in &buffer.lines {
+    for line in &editor.lines {
         file.write_all(&line.chars.as_bytes())?;
         file.write(&[b'\n'])?;
     }
@@ -253,8 +258,7 @@ fn main() -> Result<(), String> {
 
     let mut event_pump = sdl_context.event_pump()?;
 
-    let mut buffer = Buffer::new();
-    let mut cursor = Vector2::new(0, 0);
+    let mut editor = Editor::new();
 
     let mut quit = false;
     while !quit {
@@ -263,51 +267,63 @@ fn main() -> Result<(), String> {
                 Event::Quit { .. } => quit = true,
                 Event::KeyDown { keycode, .. } => match keycode {
                     Some(key) => match key {
-                        Keycode::F2 => match save(&buffer) {
+                        Keycode::F2 => match save(&editor) {
                             Ok(_) => println!("saved file!"),
                             Err(err) => eprintln!("{}", err),
                         },
                         Keycode::Backspace => {
-                            if cursor.x == 0 && cursor.y > 0 {
-                                let right_side = buffer.lines.remove(cursor.y);
-                                cursor.y -= 1;
-                                cursor.x = buffer.lines[cursor.y].chars.len();
-                                buffer.lines[cursor.y].chars.push_str(&right_side.chars);
-                            } else if cursor.x > 0 {
-                                cursor.x -= 1;
-                                buffer.lines[cursor.y].remove(cursor.x);
+                            if editor.cursor.x == 0 && editor.cursor.y > 0 {
+                                let right_side = editor.lines.remove(editor.cursor.y);
+                                editor.cursor.y -= 1;
+                                editor.cursor.x = editor.lines[editor.cursor.y].chars.len();
+                                editor.lines[editor.cursor.y]
+                                    .chars
+                                    .push_str(&right_side.chars);
+                            } else if editor.cursor.x > 0 {
+                                editor.cursor.x -= 1;
+                                editor.lines[editor.cursor.y].remove(editor.cursor.x);
                             }
                         }
-                        Keycode::Delete if cursor.x < buffer.lines[cursor.y].chars.len() => {
-                            buffer.lines[cursor.y].remove(cursor.x)
+                        Keycode::Delete
+                            if editor.cursor.x < editor.lines[editor.cursor.y].chars.len() =>
+                        {
+                            editor.lines[editor.cursor.y].remove(editor.cursor.x)
                         }
-                        Keycode::Left if cursor.x > 0 => cursor.x -= 1,
-                        Keycode::Right if cursor.x < buffer.lines[cursor.y].chars.len() => {
-                            cursor.x += 1
+                        Keycode::Left if editor.cursor.x > 0 => editor.cursor.x -= 1,
+                        Keycode::Right
+                            if editor.cursor.x < editor.lines[editor.cursor.y].chars.len() =>
+                        {
+                            editor.cursor.x += 1
                         }
-                        Keycode::Up if cursor.y > 0 => {
-                            cursor.x =
-                                std::cmp::min(buffer.lines[cursor.y - 1].chars.len(), cursor.x);
-                            cursor.y -= 1;
+                        Keycode::Up if editor.cursor.y > 0 => {
+                            editor.cursor.x = std::cmp::min(
+                                editor.lines[editor.cursor.y - 1].chars.len(),
+                                editor.cursor.x,
+                            );
+                            editor.cursor.y -= 1;
                         }
-                        Keycode::Down if cursor.y != buffer.lines.len() - 1 => {
-                            cursor.x =
-                                std::cmp::min(buffer.lines[cursor.y + 1].chars.len(), cursor.x);
-                            cursor.y += 1;
+                        Keycode::Down if editor.cursor.y != editor.lines.len() - 1 => {
+                            editor.cursor.x = std::cmp::min(
+                                editor.lines[editor.cursor.y + 1].chars.len(),
+                                editor.cursor.x,
+                            );
+                            editor.cursor.y += 1;
                         }
                         Keycode::Return => {
-                            let new_line = buffer.lines[cursor.y].chars.split_off(cursor.x);
-                            cursor.x = 0;
-                            cursor.y += 1;
-                            buffer.lines.push(Line { chars: new_line });
+                            let new_line = editor.lines[editor.cursor.y]
+                                .chars
+                                .split_off(editor.cursor.x);
+                            editor.cursor.x = 0;
+                            editor.cursor.y += 1;
+                            editor.lines.push(Line { chars: new_line });
                         }
                         _ => {}
                     },
                     _ => {}
                 },
                 Event::TextInput { text, .. } => {
-                    buffer.lines[cursor.y].insert(&text, cursor.x);
-                    cursor.x += text.len();
+                    editor.lines[editor.cursor.y].insert(&text, editor.cursor.x);
+                    editor.cursor.x += text.len();
                 }
                 _ => {}
             }
@@ -316,8 +332,8 @@ fn main() -> Result<(), String> {
         canvas.set_draw_color(Color::BLACK);
         canvas.clear();
 
-        render_text(&mut canvas, &mut font, &buffer, Color::WHITE, FONT_SCALE)?;
-        render_cursor(&mut canvas, &mut font, &buffer, cursor)?;
+        render_text(&mut canvas, &mut font, &editor, Color::WHITE, FONT_SCALE)?;
+        render_cursor(&mut canvas, &mut font, &editor)?;
 
         canvas.present();
     }
