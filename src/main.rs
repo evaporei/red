@@ -174,32 +174,19 @@ fn render_cursor(
     Ok(())
 }
 
-fn buf_insert(buffer: &mut String, text: &str, cursor: &mut usize) {
-    for ch in text.chars().rev() {
-        buffer.insert(*cursor, ch);
-    }
-    *cursor += text.len();
+#[derive(Default)]
+struct Line {
+    chars: String,
 }
 
-fn buf_remove(buffer: &mut String, cursor: &mut usize) {
-    if !buffer.is_empty() && *cursor > 0 {
-        buffer.remove(*cursor - 1);
-        *cursor -= 1;
+impl Line {
+    fn insert(&mut self, text: &str, col: usize) {
+        self.chars.insert_str(col, text);
     }
-}
-
-fn move_right(buffer: &str, cursor: &mut usize) -> bool {
-    if *cursor < buffer.len() {
-        *cursor += 1;
-        true
-    } else {
-        false
-    }
-}
-
-fn move_left(cursor: &mut usize) {
-    if *cursor > 0 {
-        *cursor -= 1;
+    fn remove(&mut self, col: usize) {
+        if !self.chars.is_empty() {
+            self.chars.remove(col);
+        }
     }
 }
 
@@ -232,7 +219,7 @@ fn main() -> Result<(), String> {
 
     let mut event_pump = sdl_context.event_pump()?;
 
-    let mut buffer = String::new();
+    let mut line = Line::default();
     let mut cursor = 0;
 
     let mut quit = false;
@@ -242,21 +229,21 @@ fn main() -> Result<(), String> {
                 Event::Quit { .. } => quit = true,
                 Event::KeyDown { keycode, .. } => match keycode {
                     Some(key) => match key {
-                        Keycode::Backspace => buf_remove(&mut buffer, &mut cursor),
-                        Keycode::Delete => {
-                            if move_right(&buffer, &mut cursor) {
-                                buf_remove(&mut buffer, &mut cursor);
-                            }
+                        Keycode::Backspace if cursor > 0 => {
+                            line.remove(cursor - 1);
+                            cursor -= 1;
                         }
-                        Keycode::Left => move_left(&mut cursor),
-                        Keycode::Right => {
-                            move_right(&buffer, &mut cursor);
-                        }
+                        Keycode::Delete if cursor < line.chars.len() => line.remove(cursor),
+                        Keycode::Left if cursor > 0 => cursor -= 1,
+                        Keycode::Right if cursor < line.chars.len() => cursor += 1,
                         _ => {}
                     },
                     _ => {}
                 },
-                Event::TextInput { text, .. } => buf_insert(&mut buffer, &text, &mut cursor),
+                Event::TextInput { text, .. } => {
+                    line.insert(&text, cursor);
+                    cursor += text.len();
+                }
                 _ => {}
             }
         }
@@ -267,12 +254,12 @@ fn main() -> Result<(), String> {
         render_text(
             &mut canvas,
             &mut font,
-            &buffer,
+            &line.chars,
             vec2f(0.0, 0.0),
             Color::WHITE,
             FONT_SCALE,
         )?;
-        render_cursor(&mut canvas, &mut font, &buffer, cursor)?;
+        render_cursor(&mut canvas, &mut font, &line.chars, cursor)?;
 
         canvas.present();
     }
