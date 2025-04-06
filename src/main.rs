@@ -210,6 +210,20 @@ impl Buffer {
     }
 }
 
+use std::io::Write;
+
+fn save(buffer: &Buffer) -> std::io::Result<()> {
+    let mut file = std::fs::File::options()
+        .write(true)
+        .truncate(true)
+        .open("output")?;
+    for line in &buffer.lines {
+        file.write_all(&line.chars.as_bytes())?;
+        file.write(&[b'\n'])?;
+    }
+    Ok(())
+}
+
 fn main() -> Result<(), String> {
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
@@ -249,6 +263,10 @@ fn main() -> Result<(), String> {
                 Event::Quit { .. } => quit = true,
                 Event::KeyDown { keycode, .. } => match keycode {
                     Some(key) => match key {
+                        Keycode::F2 => match save(&buffer) {
+                            Ok(_) => println!("saved file!"),
+                            Err(err) => eprintln!("{}", err),
+                        },
                         Keycode::Backspace => {
                             if cursor.x == 0 && cursor.y > 0 {
                                 let right_side = buffer.lines.remove(cursor.y);
