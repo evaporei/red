@@ -87,20 +87,22 @@ impl<'a> Font<'a> {
 }
 
 #[derive(Copy, Clone)]
-struct Vec2f {
-    pub x: f32,
-    pub y: f32,
+struct Vector2<T> {
+    pub x: T,
+    pub y: T,
 }
 
-fn vec2f(x: f32, y: f32) -> Vec2f {
-    Vec2f { x, y }
+impl<T> Vector2<T> {
+    fn new(x: T, y: T) -> Vector2<T> {
+        Vector2 { x, y }
+    }
 }
 
 fn render_char(
     canvas: &mut WindowCanvas,
     font: &Font,
     c: u8,
-    pos: Vec2f,
+    pos: Vector2<f32>,
     scale: f32,
 ) -> Result<(), String> {
     assert!(c >= ASCII_DISPLAY_LOW);
@@ -130,7 +132,7 @@ fn render_text(
     canvas: &mut WindowCanvas,
     font: &mut Font,
     text: &str,
-    pos: Vec2f,
+    pos: Vector2<f32>,
     color: Color,
     scale: f32,
 ) -> Result<(), String> {
@@ -150,7 +152,7 @@ fn render_cursor(
     buffer: &str,
     cursor: usize,
 ) -> Result<(), String> {
-    let pos = vec2f(cursor as f32 * FONT_CHAR_WIDTH as f32 * FONT_SCALE, 0.0);
+    let pos = Vector2::new(cursor as f32 * FONT_CHAR_WIDTH as f32 * FONT_SCALE, 0.0);
 
     canvas.set_draw_color(Color::WHITE);
     canvas.fill_rect(Rect::new(
@@ -190,6 +192,18 @@ impl Line {
     }
 }
 
+struct Buffer {
+    lines: Vec<Line>,
+}
+
+impl Buffer {
+    fn new() -> Self {
+        Self {
+            lines: vec![Line::default()],
+        }
+    }
+}
+
 fn main() -> Result<(), String> {
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
@@ -219,8 +233,8 @@ fn main() -> Result<(), String> {
 
     let mut event_pump = sdl_context.event_pump()?;
 
-    let mut line = Line::default();
-    let mut cursor = 0;
+    let mut buffer = Buffer::new();
+    let mut cursor = Vector2::new(0, 0);
 
     let mut quit = false;
     while !quit {
@@ -229,20 +243,22 @@ fn main() -> Result<(), String> {
                 Event::Quit { .. } => quit = true,
                 Event::KeyDown { keycode, .. } => match keycode {
                     Some(key) => match key {
-                        Keycode::Backspace if cursor > 0 => {
-                            cursor -= 1;
-                            line.remove(cursor);
+                        Keycode::Backspace if cursor.x > 0 => {
+                            cursor.x -= 1;
+                            buffer.lines[0].remove(cursor.x);
                         }
-                        Keycode::Delete if cursor < line.chars.len() => line.remove(cursor),
-                        Keycode::Left if cursor > 0 => cursor -= 1,
-                        Keycode::Right if cursor < line.chars.len() => cursor += 1,
+                        Keycode::Delete if cursor.x < buffer.lines[0].chars.len() => {
+                            buffer.lines[0].remove(cursor.x)
+                        }
+                        Keycode::Left if cursor.x > 0 => cursor.x -= 1,
+                        Keycode::Right if cursor.x < buffer.lines[0].chars.len() => cursor.x += 1,
                         _ => {}
                     },
                     _ => {}
                 },
                 Event::TextInput { text, .. } => {
-                    line.insert(&text, cursor);
-                    cursor += text.len();
+                    buffer.lines[0].insert(&text, cursor.x);
+                    cursor.x += text.len();
                 }
                 _ => {}
             }
@@ -254,12 +270,12 @@ fn main() -> Result<(), String> {
         render_text(
             &mut canvas,
             &mut font,
-            &line.chars,
-            vec2f(0.0, 0.0),
+            &buffer.lines[0].chars,
+            Vector2::new(0.0, 0.0),
             Color::WHITE,
             FONT_SCALE,
         )?;
-        render_cursor(&mut canvas, &mut font, &line.chars, cursor)?;
+        render_cursor(&mut canvas, &mut font, &buffer.lines[0].chars, cursor.x)?;
 
         canvas.present();
     }
