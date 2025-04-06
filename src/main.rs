@@ -138,9 +138,13 @@ fn render_text(
     set_texture_color(&mut font.spritesheet, color);
 
     let mut pen = Vector2::new(0.0, 0.0);
-    for ch in buffer.lines[0].chars.bytes() {
-        render_char(canvas, font, ch, pen, scale)?;
-        pen.x += FONT_CHAR_WIDTH as f32 * scale;
+    for line in &buffer.lines {
+        for ch in line.chars.bytes() {
+            render_char(canvas, font, ch, pen, scale)?;
+            pen.x += FONT_CHAR_WIDTH as f32 * scale;
+        }
+        pen.x = 0.0;
+        pen.y += FONT_CHAR_HEIGHT as f32 * scale;
     }
     Ok(())
 }
@@ -151,7 +155,10 @@ fn render_cursor(
     buffer: &Buffer,
     cursor: Vector2<usize>,
 ) -> Result<(), String> {
-    let pos = Vector2::new(cursor.x as f32 * FONT_CHAR_WIDTH as f32 * FONT_SCALE, 0.0);
+    let pos = Vector2::new(
+        cursor.x as f32 * FONT_CHAR_WIDTH as f32 * FONT_SCALE,
+        cursor.y as f32 * FONT_CHAR_HEIGHT as f32 * FONT_SCALE,
+    );
 
     canvas.set_draw_color(Color::WHITE);
     canvas.fill_rect(Rect::new(
@@ -244,19 +251,26 @@ fn main() -> Result<(), String> {
                     Some(key) => match key {
                         Keycode::Backspace if cursor.x > 0 => {
                             cursor.x -= 1;
-                            buffer.lines[0].remove(cursor.x);
+                            buffer.lines[cursor.y].remove(cursor.x);
                         }
-                        Keycode::Delete if cursor.x < buffer.lines[0].chars.len() => {
-                            buffer.lines[0].remove(cursor.x)
+                        Keycode::Delete if cursor.x < buffer.lines[cursor.y].chars.len() => {
+                            buffer.lines[cursor.y].remove(cursor.x)
                         }
                         Keycode::Left if cursor.x > 0 => cursor.x -= 1,
-                        Keycode::Right if cursor.x < buffer.lines[0].chars.len() => cursor.x += 1,
+                        Keycode::Right if cursor.x < buffer.lines[cursor.y].chars.len() => {
+                            cursor.x += 1
+                        }
+                        Keycode::Return => {
+                            cursor.x = 0;
+                            cursor.y += 1;
+                            buffer.lines.push(Line::default());
+                        }
                         _ => {}
                     },
                     _ => {}
                 },
                 Event::TextInput { text, .. } => {
-                    buffer.lines[0].insert(&text, cursor.x);
+                    buffer.lines[cursor.y].insert(&text, cursor.x);
                     cursor.x += text.len();
                 }
                 _ => {}
