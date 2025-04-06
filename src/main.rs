@@ -267,6 +267,16 @@ fn main() -> Result<(), String> {
                         Keycode::Right if cursor.x < buffer.lines[cursor.y].chars.len() => {
                             cursor.x += 1
                         }
+                        Keycode::Up if cursor.y > 0 => {
+                            cursor.x =
+                                std::cmp::min(buffer.lines[cursor.y - 1].chars.len(), cursor.x);
+                            cursor.y -= 1;
+                        }
+                        Keycode::Down if cursor.y != buffer.lines.len() - 1 => {
+                            cursor.x =
+                                std::cmp::min(buffer.lines[cursor.y + 1].chars.len(), cursor.x);
+                            cursor.y += 1;
+                        }
                         Keycode::Return => {
                             let new_line = buffer.lines[cursor.y].chars.split_off(cursor.x);
                             cursor.x = 0;
