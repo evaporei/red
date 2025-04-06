@@ -230,8 +230,8 @@ fn main() -> Result<(), String> {
                 Event::KeyDown { keycode, .. } => match keycode {
                     Some(key) => match key {
                         Keycode::Backspace if cursor > 0 => {
-                            line.remove(cursor - 1);
                             cursor -= 1;
+                            line.remove(cursor);
                         }
                         Keycode::Delete if cursor < line.chars.len() => line.remove(cursor),
                         Keycode::Left if cursor > 0 => cursor -= 1,
