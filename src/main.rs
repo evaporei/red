@@ -230,13 +230,14 @@ impl Editor {
     fn from_filepath(filepath: String) -> std::io::Result<Self> {
         let filepath = PathBuf::from(filepath);
         let mut editor = Self::default();
-        for line in read_lines(filepath)? {
+        for line in read_lines(&filepath)? {
             let mut chars = line?;
             if chars.ends_with('\n') {
                 chars.pop();
             }
             editor.lines.push(Line { chars });
         }
+        editor.filepath = Some(filepath);
         Ok(editor)
     }
     fn save(&self) -> std::io::Result<()> {
