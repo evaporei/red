@@ -86,7 +86,7 @@ impl<'a> Font<'a> {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 struct Vector2<T> {
     pub x: T,
     pub y: T,
@@ -201,33 +201,62 @@ impl Line {
     }
 }
 
+#[derive(Default)]
 struct Editor {
+    filepath: Option<PathBuf>,
     lines: Vec<Line>,
     cursor: Vector2<usize>,
+}
+
+use std::fs::File;
+use std::io;
+
+fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
+where
+    P: AsRef<Path>,
+{
+    let file = File::open(filename)?;
+    Ok(io::BufReader::new(file).lines())
 }
 
 impl Editor {
     fn new() -> Self {
         Self {
+            filepath: None,
             lines: vec![Line::default()],
             cursor: Vector2::new(0, 0),
         }
     }
-}
-
-use std::io::Write;
-
-fn save(editor: &Editor) -> std::io::Result<()> {
-    let mut file = std::fs::File::options()
-        .write(true)
-        .truncate(true)
-        .open("output")?;
-    for line in &editor.lines {
-        file.write_all(&line.chars.as_bytes())?;
-        file.write(&[b'\n'])?;
+    fn from_filepath(filepath: String) -> std::io::Result<Self> {
+        let filepath = PathBuf::from(filepath);
+        let mut editor = Self::default();
+        for line in read_lines(filepath)? {
+            let mut chars = line?;
+            if chars.ends_with('\n') {
+                chars.pop();
+            }
+            editor.lines.push(Line { chars });
+        }
+        Ok(editor)
     }
-    Ok(())
+    fn save(&self) -> std::io::Result<()> {
+        let mut file = std::fs::File::options().write(true).truncate(true).open(
+            self.filepath
+                .as_ref()
+                .unwrap_or(&PathBuf::from_str("output").unwrap()),
+        )?;
+        for line in &self.lines {
+            file.write_all(&line.chars.as_bytes())?;
+            file.write(&[b'\n'])?;
+        }
+        Ok(())
+    }
 }
+
+use std::io::BufRead;
+use std::io::Write;
+use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 fn main() -> Result<(), String> {
     let sdl_context = sdl2::init()?;
@@ -258,7 +287,11 @@ fn main() -> Result<(), String> {
 
     let mut event_pump = sdl_context.event_pump()?;
 
-    let mut editor = Editor::new();
+    let mut editor = if let Some(filepath) = std::env::args().skip(1).next() {
+        Editor::from_filepath(filepath).map_err(|e| e.to_string())?
+    } else {
+        Editor::new()
+    };
 
     let mut quit = false;
     while !quit {
@@ -267,7 +300,7 @@ fn main() -> Result<(), String> {
                 Event::Quit { .. } => quit = true,
                 Event::KeyDown { keycode, .. } => match keycode {
                     Some(key) => match key {
-                        Keycode::F2 => match save(&editor) {
+                        Keycode::F2 => match editor.save() {
                             Ok(_) => println!("saved file!"),
                             Err(err) => eprintln!("{}", err),
                         },
