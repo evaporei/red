@@ -237,6 +237,9 @@ impl Editor {
             }
             editor.lines.push(Line { chars });
         }
+        if editor.lines.is_empty() {
+            editor.lines.push(Line::default());
+        }
         editor.filepath = Some(filepath);
         Ok(editor)
     }
