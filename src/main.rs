@@ -355,7 +355,9 @@ fn main() -> Result<(), String> {
                                 .split_off(editor.cursor.x);
                             editor.cursor.x = 0;
                             editor.cursor.y += 1;
-                            editor.lines.push(Line { chars: new_line });
+                            editor
+                                .lines
+                                .insert(editor.cursor.y, Line { chars: new_line });
                         }
                         _ => {}
                     },
