@@ -1,5 +1,7 @@
+use gl::types::GLuint;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
+use sdl2::libc::W_OK;
 use sdl2::pixels::Color;
 use sdl2::pixels::PixelFormatEnum;
 use sdl2::rect::Rect;
@@ -9,6 +11,7 @@ use stb_image::stb_image::stbi_load;
 use std::ffi::CString;
 
 use red::editor::Editor;
+use red::shaders;
 use red::vector2::Vector2;
 
 const SCREEN_WIDTH: u32 = 1280;
@@ -182,6 +185,62 @@ fn render_cursor(
 }
 
 fn main() -> Result<(), String> {
+    let sdl_context = sdl2::init()?;
+    let video_subsystem = sdl_context.video()?;
+
+    let gl_attr = video_subsystem.gl_attr();
+    gl_attr.set_context_profile(sdl2::video::GLProfile::Core);
+    gl_attr.set_context_version(3, 3);
+
+    let window = video_subsystem
+        .window("red", SCREEN_WIDTH, SCREEN_HEIGHT)
+        .opengl()
+        .resizable()
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let _gl_context = window.gl_create_context()?;
+    let _gl =
+        gl::load_with(|s| video_subsystem.gl_get_proc_address(s) as *const std::os::raw::c_void);
+
+    unsafe {
+        gl::Enable(gl::BLEND);
+        gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
+    }
+
+    let mut vao: GLuint = 0;
+
+    unsafe {
+        gl::GenVertexArrays(1, &mut vao);
+        gl::BindVertexArray(vao);
+    }
+
+    let program = shaders::load("shaders/font.vert", "shaders/font.frag")?;
+    unsafe { gl::UseProgram(program) };
+
+    let mut event_pump = sdl_context.event_pump()?;
+    let mut quit = false;
+    while !quit {
+        for event in event_pump.poll_iter() {
+            match event {
+                sdl2::event::Event::Quit { .. } => quit = true,
+                _ => {}
+            }
+        }
+
+        unsafe {
+            gl::Clear(gl::COLOR_BUFFER_BIT);
+            gl::ClearColor(0.0, 0.0, 0.0, 1.0);
+            gl::DrawArrays(gl::TRIANGLE_STRIP, 0, 4);
+        }
+
+        window.gl_swap_window();
+    }
+
+    Ok(())
+}
+
+fn main2() -> Result<(), String> {
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
 
