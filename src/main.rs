@@ -192,6 +192,8 @@ fn main() -> Result<(), String> {
         .build()
         .map_err(|e| e.to_string())?;
 
+    let window_size = Vector2::new(window.size().0 as f32, window.size().1 as f32);
+
     let mut canvas = window
         .into_canvas()
         .accelerated()
@@ -260,15 +262,17 @@ fn main() -> Result<(), String> {
         canvas.set_draw_color(Color::BLACK);
         canvas.clear();
 
+        let projection = camera_pos - window_size / Vector2::from_scalar(2.0);
+
         render_text(
             &mut canvas,
             &mut font,
             &editor,
-            camera_pos,
+            projection,
             Color::WHITE,
             FONT_SCALE,
         )?;
-        render_cursor(&mut canvas, &mut font, &editor, camera_pos, cursor_pos)?;
+        render_cursor(&mut canvas, &mut font, &editor, projection, cursor_pos)?;
 
         canvas.present();
         let duration = timer.ticks() - start;

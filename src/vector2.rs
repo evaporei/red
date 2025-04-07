@@ -48,6 +48,17 @@ impl<T: ops::Mul<Output = T>> ops::Mul<Vector2<T>> for Vector2<T> {
     }
 }
 
+impl<T: ops::Div<Output = T>> ops::Div<Vector2<T>> for Vector2<T> {
+    type Output = Vector2<T>;
+
+    fn div(self, rhs: Vector2<T>) -> Vector2<T> {
+        Vector2 {
+            x: self.x / rhs.x,
+            y: self.y / rhs.y,
+        }
+    }
+}
+
 impl<T: ops::Add<Output = T> + Copy> ops::AddAssign<Vector2<T>> for Vector2<T> {
     fn add_assign(&mut self, rhs: Vector2<T>) {
         *self = *self + rhs;
@@ -63,5 +74,11 @@ impl<T: ops::Sub<Output = T> + Copy> ops::SubAssign<Vector2<T>> for Vector2<T> {
 impl<T: ops::Mul<Output = T> + Copy> ops::MulAssign<Vector2<T>> for Vector2<T> {
     fn mul_assign(&mut self, rhs: Vector2<T>) {
         *self = *self * rhs;
+    }
+}
+
+impl<T: ops::Div<Output = T> + Copy> ops::DivAssign<Vector2<T>> for Vector2<T> {
+    fn div_assign(&mut self, rhs: Vector2<T>) {
+        *self = *self / rhs;
     }
 }
