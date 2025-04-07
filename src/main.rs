@@ -8,6 +8,8 @@ use sdl2::surface::Surface;
 use stb_image::stb_image::stbi_load;
 use std::ffi::CString;
 
+use red::vector2::Vector2;
+
 const SCREEN_WIDTH: u32 = 1280;
 const SCREEN_HEIGHT: u32 = 720;
 const FPS: u32 = 60;
@@ -88,74 +90,6 @@ impl<'a> Font<'a> {
             spritesheet,
             glyph_table,
         }
-    }
-}
-
-#[derive(Default, Copy, Clone)]
-struct Vector2<T> {
-    pub x: T,
-    pub y: T,
-}
-
-impl<T: Copy + Clone> Vector2<T> {
-    fn new(x: T, y: T) -> Vector2<T> {
-        Vector2 { x, y }
-    }
-    fn from_scalar(s: T) -> Vector2<T> {
-        Vector2 { x: s, y: s }
-    }
-}
-
-use std::ops;
-
-impl<T: ops::Add<Output = T>> ops::Add<Vector2<T>> for Vector2<T> {
-    type Output = Vector2<T>;
-
-    fn add(self, rhs: Vector2<T>) -> Vector2<T> {
-        Vector2 {
-            x: self.x + rhs.x,
-            y: self.y + rhs.y,
-        }
-    }
-}
-
-impl<T: ops::Sub<Output = T>> ops::Sub<Vector2<T>> for Vector2<T> {
-    type Output = Vector2<T>;
-
-    fn sub(self, rhs: Vector2<T>) -> Vector2<T> {
-        Vector2 {
-            x: self.x - rhs.x,
-            y: self.y - rhs.y,
-        }
-    }
-}
-
-impl<T: ops::Mul<Output = T>> ops::Mul<Vector2<T>> for Vector2<T> {
-    type Output = Vector2<T>;
-
-    fn mul(self, rhs: Vector2<T>) -> Vector2<T> {
-        Vector2 {
-            x: self.x * rhs.x,
-            y: self.y * rhs.y,
-        }
-    }
-}
-
-impl<T: ops::Add<Output = T> + Copy> ops::AddAssign<Vector2<T>> for Vector2<T> {
-    fn add_assign(&mut self, rhs: Vector2<T>) {
-        *self = *self + rhs;
-    }
-}
-
-impl<T: ops::Sub<Output = T> + Copy> ops::SubAssign<Vector2<T>> for Vector2<T> {
-    fn sub_assign(&mut self, rhs: Vector2<T>) {
-        *self = *self - rhs;
-    }
-}
-
-impl<T: ops::Mul<Output = T> + Copy> ops::MulAssign<Vector2<T>> for Vector2<T> {
-    fn mul_assign(&mut self, rhs: Vector2<T>) {
-        *self = *self * rhs;
     }
 }
 
