@@ -284,10 +284,17 @@ fn main() -> Result<(), String> {
                                 editor.lines[editor.cursor.y].remove(editor.cursor.x);
                             }
                         }
-                        Keycode::Delete
-                            if editor.cursor.x < editor.lines[editor.cursor.y].chars.len() =>
-                        {
-                            editor.lines[editor.cursor.y].remove(editor.cursor.x)
+                        Keycode::Delete => {
+                            if editor.cursor.x == editor.lines[editor.cursor.y].chars.len()
+                                && editor.lines.len() > editor.cursor.y + 1
+                            {
+                                let right_side = editor.lines.remove(editor.cursor.y + 1);
+                                editor.lines[editor.cursor.y]
+                                    .chars
+                                    .push_str(&right_side.chars);
+                            } else if editor.cursor.x < editor.lines[editor.cursor.y].chars.len() {
+                                editor.lines[editor.cursor.y].remove(editor.cursor.x);
+                            }
                         }
                         Keycode::Left if editor.cursor.x > 0 => editor.cursor.x -= 1,
                         Keycode::Right
