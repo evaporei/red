@@ -211,14 +211,6 @@ struct Editor {
 use std::fs::File;
 use std::io;
 
-fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
-where
-    P: AsRef<Path>,
-{
-    let file = File::open(filename)?;
-    Ok(io::BufReader::new(file).lines())
-}
-
 impl Editor {
     fn new() -> Self {
         Self {
@@ -229,8 +221,18 @@ impl Editor {
     }
     fn from_filepath(filepath: String) -> std::io::Result<Self> {
         let filepath = PathBuf::from(filepath);
+        let file = match File::open(&filepath) {
+            Ok(file) => file,
+            Err(_) => {
+                // it's alright if file doesn't exist
+                return Ok(Self {
+                    filepath: Some(filepath),
+                    ..Self::new()
+                });
+            }
+        };
         let mut editor = Self::default();
-        for line in read_lines(&filepath)? {
+        for line in io::BufReader::new(file).lines() {
             let mut chars = line?;
             if chars.ends_with('\n') {
                 chars.pop();
@@ -244,11 +246,15 @@ impl Editor {
         Ok(editor)
     }
     fn save(&self) -> std::io::Result<()> {
-        let mut file = std::fs::File::options().write(true).truncate(true).open(
-            self.filepath
-                .as_ref()
-                .unwrap_or(&PathBuf::from_str("output").unwrap()),
-        )?;
+        let mut file = std::fs::File::options()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open(
+                self.filepath
+                    .as_ref()
+                    .unwrap_or(&PathBuf::from_str("output").unwrap()),
+            )?;
         for line in &self.lines {
             file.write_all(&line.chars.as_bytes())?;
             file.write(&[b'\n'])?;
@@ -259,7 +265,7 @@ impl Editor {
 
 use std::io::BufRead;
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::str::FromStr;
 
 fn main() -> Result<(), String> {
