@@ -256,7 +256,7 @@ fn main() -> Result<(), String> {
             editor.cursor.y as f32 * FONT_CHAR_HEIGHT as f32 * FONT_SCALE,
         );
 
-        camera_vel = cursor_pos - camera_pos;
+        camera_vel = (cursor_pos - camera_pos) * Vector2::from_scalar(2.0);
         camera_pos += camera_vel * Vector2::from_scalar(DELTA_TIME);
 
         canvas.set_draw_color(Color::BLACK);
