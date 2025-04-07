@@ -8,6 +8,11 @@ use sdl2::surface::Surface;
 use stb_image::stb_image::stbi_load;
 use std::ffi::CString;
 
+const SCREEN_WIDTH: u32 = 800;
+const SCREEN_HEIGHT: u32 = 600;
+const FPS: u32 = 60;
+const DELTA_TIME: f32 = 1.0 / FPS as f32;
+
 const FONT_SCALE: f32 = 5.0;
 const FONT_WIDTH: usize = 128;
 const FONT_HEIGHT: usize = 64;
@@ -92,9 +97,65 @@ struct Vector2<T> {
     pub y: T,
 }
 
-impl<T> Vector2<T> {
+impl<T: Copy + Clone> Vector2<T> {
     fn new(x: T, y: T) -> Vector2<T> {
         Vector2 { x, y }
+    }
+    fn from_scalar(s: T) -> Vector2<T> {
+        Vector2 { x: s, y: s }
+    }
+}
+
+use std::ops;
+
+impl<T: ops::Add<Output = T>> ops::Add<Vector2<T>> for Vector2<T> {
+    type Output = Vector2<T>;
+
+    fn add(self, rhs: Vector2<T>) -> Vector2<T> {
+        Vector2 {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
+        }
+    }
+}
+
+impl<T: ops::Sub<Output = T>> ops::Sub<Vector2<T>> for Vector2<T> {
+    type Output = Vector2<T>;
+
+    fn sub(self, rhs: Vector2<T>) -> Vector2<T> {
+        Vector2 {
+            x: self.x - rhs.x,
+            y: self.y - rhs.y,
+        }
+    }
+}
+
+impl<T: ops::Mul<Output = T>> ops::Mul<Vector2<T>> for Vector2<T> {
+    type Output = Vector2<T>;
+
+    fn mul(self, rhs: Vector2<T>) -> Vector2<T> {
+        Vector2 {
+            x: self.x * rhs.x,
+            y: self.y * rhs.y,
+        }
+    }
+}
+
+impl<T: ops::Add<Output = T> + Copy> ops::AddAssign<Vector2<T>> for Vector2<T> {
+    fn add_assign(&mut self, rhs: Vector2<T>) {
+        *self = *self + rhs;
+    }
+}
+
+impl<T: ops::Sub<Output = T> + Copy> ops::SubAssign<Vector2<T>> for Vector2<T> {
+    fn sub_assign(&mut self, rhs: Vector2<T>) {
+        *self = *self - rhs;
+    }
+}
+
+impl<T: ops::Mul<Output = T> + Copy> ops::MulAssign<Vector2<T>> for Vector2<T> {
+    fn mul_assign(&mut self, rhs: Vector2<T>) {
+        *self = *self * rhs;
     }
 }
 
@@ -132,6 +193,7 @@ fn render_text(
     canvas: &mut WindowCanvas,
     font: &mut Font,
     editor: &Editor,
+    camera_pos: Vector2<f32>,
     color: Color,
     scale: f32,
 ) -> Result<(), String> {
@@ -140,7 +202,7 @@ fn render_text(
     let mut pen = Vector2::new(0.0, 0.0);
     for line in &editor.lines {
         for ch in line.chars.bytes() {
-            render_char(canvas, font, ch, pen, scale)?;
+            render_char(canvas, font, ch, pen - camera_pos, scale)?;
             pen.x += FONT_CHAR_WIDTH as f32 * scale;
         }
         pen.x = 0.0;
@@ -153,11 +215,10 @@ fn render_cursor(
     canvas: &mut WindowCanvas,
     font: &mut Font,
     editor: &Editor,
+    camera_pos: Vector2<f32>,
+    pos: Vector2<f32>,
 ) -> Result<(), String> {
-    let pos = Vector2::new(
-        editor.cursor.x as f32 * FONT_CHAR_WIDTH as f32 * FONT_SCALE,
-        editor.cursor.y as f32 * FONT_CHAR_HEIGHT as f32 * FONT_SCALE,
-    );
+    let pos = pos - camera_pos;
 
     canvas.set_draw_color(Color::WHITE);
     canvas.fill_rect(Rect::new(
@@ -326,7 +387,7 @@ fn main() -> Result<(), String> {
     let video_subsystem = sdl_context.video()?;
 
     let window = video_subsystem
-        .window("red", 800, 600)
+        .window("red", SCREEN_WIDTH, SCREEN_HEIGHT)
         .position_centered()
         .resizable()
         .build()
@@ -356,8 +417,14 @@ fn main() -> Result<(), String> {
         Editor::new()
     };
 
+    let mut camera_pos = Vector2::new(0.0, 0.0);
+    let mut camera_vel;
+
+    let timer = sdl_context.timer()?;
+
     let mut quit = false;
     while !quit {
+        let start = timer.ticks();
         for event in event_pump.poll_iter() {
             match event {
                 Event::Quit { .. } => quit = true,
@@ -383,13 +450,33 @@ fn main() -> Result<(), String> {
             }
         }
 
+        let cursor_pos = Vector2::new(
+            editor.cursor.x as f32 * FONT_CHAR_WIDTH as f32 * FONT_SCALE,
+            editor.cursor.y as f32 * FONT_CHAR_HEIGHT as f32 * FONT_SCALE,
+        );
+
+        camera_vel = cursor_pos - camera_pos;
+        camera_pos += camera_vel * Vector2::from_scalar(DELTA_TIME);
+
         canvas.set_draw_color(Color::BLACK);
         canvas.clear();
 
-        render_text(&mut canvas, &mut font, &editor, Color::WHITE, FONT_SCALE)?;
-        render_cursor(&mut canvas, &mut font, &editor)?;
+        render_text(
+            &mut canvas,
+            &mut font,
+            &editor,
+            camera_pos,
+            Color::WHITE,
+            FONT_SCALE,
+        )?;
+        render_cursor(&mut canvas, &mut font, &editor, camera_pos, cursor_pos)?;
 
         canvas.present();
+        let duration = timer.ticks() - start;
+        let delta_time_ms = 1000 / FPS;
+        if duration < delta_time_ms {
+            timer.delay(delta_time_ms - duration);
+        }
     }
 
     Ok(())
