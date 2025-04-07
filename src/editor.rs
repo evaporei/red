@@ -6,7 +6,7 @@ pub struct Line {
 }
 
 impl Line {
-    fn insert(&mut self, text: &str, col: usize) {
+    fn insert(&mut self, col: usize, text: &str) {
         self.chars.insert_str(col, text);
     }
     fn remove(&mut self, col: usize) {
@@ -130,7 +130,7 @@ impl Editor {
         self.lines.insert(self.cursor.y, Line { chars: new_line });
     }
     pub fn insert_text(&mut self, text: &str) {
-        self.lines[self.cursor.y].insert(text, self.cursor.x);
+        self.lines[self.cursor.y].insert(self.cursor.x, text);
         self.cursor.x += text.len();
     }
 }
