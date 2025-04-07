@@ -261,6 +261,59 @@ impl Editor {
         }
         Ok(())
     }
+    fn backspace(&mut self) {
+        if self.cursor.x == 0 && self.cursor.y > 0 {
+            let right_side = self.lines.remove(self.cursor.y);
+            self.cursor.y -= 1;
+            self.cursor.x = self.lines[self.cursor.y].chars.len();
+            self.lines[self.cursor.y].chars.push_str(&right_side.chars);
+        } else if self.cursor.x > 0 {
+            self.cursor.x -= 1;
+            self.lines[self.cursor.y].remove(self.cursor.x);
+        }
+    }
+    fn delete(&mut self) {
+        if self.cursor.x == self.lines[self.cursor.y].chars.len()
+            && self.lines.len() > self.cursor.y + 1
+        {
+            let right_side = self.lines.remove(self.cursor.y + 1);
+            self.lines[self.cursor.y].chars.push_str(&right_side.chars);
+        } else if self.cursor.x < self.lines[self.cursor.y].chars.len() {
+            self.lines[self.cursor.y].remove(self.cursor.x);
+        }
+    }
+    fn move_left(&mut self) {
+        if self.cursor.x > 0 {
+            self.cursor.x -= 1
+        }
+    }
+    fn move_right(&mut self) {
+        if self.cursor.x < self.lines[self.cursor.y].chars.len() {
+            self.cursor.x += 1;
+        }
+    }
+    fn move_up(&mut self) {
+        if self.cursor.y > 0 {
+            self.cursor.x = std::cmp::min(self.lines[self.cursor.y - 1].chars.len(), self.cursor.x);
+            self.cursor.y -= 1;
+        }
+    }
+    fn move_down(&mut self) {
+        if self.cursor.y != self.lines.len() - 1 {
+            self.cursor.x = std::cmp::min(self.lines[self.cursor.y + 1].chars.len(), self.cursor.x);
+            self.cursor.y += 1;
+        }
+    }
+    fn newline(&mut self) {
+        let new_line = self.lines[self.cursor.y].chars.split_off(self.cursor.x);
+        self.cursor.x = 0;
+        self.cursor.y += 1;
+        self.lines.insert(self.cursor.y, Line { chars: new_line });
+    }
+    fn insert_text(&mut self, text: &str) {
+        self.lines[self.cursor.y].insert(text, self.cursor.x);
+        self.cursor.x += text.len();
+    }
 }
 
 use std::io::BufRead;
@@ -314,69 +367,18 @@ fn main() -> Result<(), String> {
                             Ok(_) => println!("saved file!"),
                             Err(err) => eprintln!("{}", err),
                         },
-                        Keycode::Backspace => {
-                            if editor.cursor.x == 0 && editor.cursor.y > 0 {
-                                let right_side = editor.lines.remove(editor.cursor.y);
-                                editor.cursor.y -= 1;
-                                editor.cursor.x = editor.lines[editor.cursor.y].chars.len();
-                                editor.lines[editor.cursor.y]
-                                    .chars
-                                    .push_str(&right_side.chars);
-                            } else if editor.cursor.x > 0 {
-                                editor.cursor.x -= 1;
-                                editor.lines[editor.cursor.y].remove(editor.cursor.x);
-                            }
-                        }
-                        Keycode::Delete => {
-                            if editor.cursor.x == editor.lines[editor.cursor.y].chars.len()
-                                && editor.lines.len() > editor.cursor.y + 1
-                            {
-                                let right_side = editor.lines.remove(editor.cursor.y + 1);
-                                editor.lines[editor.cursor.y]
-                                    .chars
-                                    .push_str(&right_side.chars);
-                            } else if editor.cursor.x < editor.lines[editor.cursor.y].chars.len() {
-                                editor.lines[editor.cursor.y].remove(editor.cursor.x);
-                            }
-                        }
-                        Keycode::Left if editor.cursor.x > 0 => editor.cursor.x -= 1,
-                        Keycode::Right
-                            if editor.cursor.x < editor.lines[editor.cursor.y].chars.len() =>
-                        {
-                            editor.cursor.x += 1
-                        }
-                        Keycode::Up if editor.cursor.y > 0 => {
-                            editor.cursor.x = std::cmp::min(
-                                editor.lines[editor.cursor.y - 1].chars.len(),
-                                editor.cursor.x,
-                            );
-                            editor.cursor.y -= 1;
-                        }
-                        Keycode::Down if editor.cursor.y != editor.lines.len() - 1 => {
-                            editor.cursor.x = std::cmp::min(
-                                editor.lines[editor.cursor.y + 1].chars.len(),
-                                editor.cursor.x,
-                            );
-                            editor.cursor.y += 1;
-                        }
-                        Keycode::Return => {
-                            let new_line = editor.lines[editor.cursor.y]
-                                .chars
-                                .split_off(editor.cursor.x);
-                            editor.cursor.x = 0;
-                            editor.cursor.y += 1;
-                            editor
-                                .lines
-                                .insert(editor.cursor.y, Line { chars: new_line });
-                        }
+                        Keycode::Backspace => editor.backspace(),
+                        Keycode::Delete => editor.delete(),
+                        Keycode::Left => editor.move_left(),
+                        Keycode::Right => editor.move_right(),
+                        Keycode::Up => editor.move_up(),
+                        Keycode::Down => editor.move_down(),
+                        Keycode::Return => editor.newline(),
                         _ => {}
                     },
                     _ => {}
                 },
-                Event::TextInput { text, .. } => {
-                    editor.lines[editor.cursor.y].insert(&text, editor.cursor.x);
-                    editor.cursor.x += text.len();
-                }
+                Event::TextInput { text, .. } => editor.insert_text(&text),
                 _ => {}
             }
         }
