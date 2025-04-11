@@ -2,6 +2,10 @@
 
 layout(location = 0) out vec4 outColor;
 
+uniform sampler2D font;
+
+in vec2 uv;
+
 void main() {
-    outColor = vec4(1.0, 0.0, 0.0, 1.0);
+    outColor = texture(font, uv);
 }

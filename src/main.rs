@@ -7,7 +7,8 @@ use sdl2::pixels::PixelFormatEnum;
 use sdl2::rect::Rect;
 use sdl2::render::{Texture, WindowCanvas};
 use sdl2::surface::Surface;
-use stb_image::stb_image::stbi_load;
+use stb_image::stb_image::{stbi_load, stbi_set_flip_vertically_on_load};
+use std::ffi::c_void;
 use std::ffi::CString;
 
 use red::editor::Editor;
@@ -34,10 +35,11 @@ fn load_img(file_path: &str) -> (Vec<u8>, i32, i32) {
 
     let mut width = 0;
     let mut height = 0;
-    let mut channels = 0;
+    let mut channels = 3;
     let stbi_rgb_alpha = 4;
 
     let pixels = unsafe {
+        stbi_set_flip_vertically_on_load(1);
         stbi_load(
             c_path.as_ptr(),
             &mut width,
@@ -217,6 +219,32 @@ fn main() -> Result<(), String> {
 
     let program = shaders::load("shaders/font.vert", "shaders/font.frag")?;
     unsafe { gl::UseProgram(program) };
+
+    let mut font_texture = 0;
+    let (mut pixels, width, height) = load_img("charmap-oldschool_white.png");
+    unsafe {
+        gl::ActiveTexture(gl::TEXTURE0);
+        gl::GenTextures(1, &mut font_texture);
+        gl::BindTexture(gl::TEXTURE_2D, font_texture);
+
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
+
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32);
+
+        gl::TexImage2D(
+            gl::TEXTURE_2D,
+            0,
+            gl::RGBA as i32,
+            width,
+            height,
+            0,
+            gl::RGBA,
+            gl::UNSIGNED_BYTE,
+            pixels.as_mut_ptr() as *mut c_void,
+        );
+    }
 
     let mut event_pump = sdl_context.event_pump()?;
     let mut quit = false;
