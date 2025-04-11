@@ -1,7 +1,6 @@
 use gl::types::GLuint;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
-use sdl2::libc::W_OK;
 use sdl2::pixels::Color;
 use sdl2::pixels::PixelFormatEnum;
 use sdl2::rect::Rect;
@@ -217,8 +216,12 @@ fn main() -> Result<(), String> {
         gl::BindVertexArray(vao);
     }
 
+    let time_uniform;
     let program = shaders::load("shaders/font.vert", "shaders/font.frag")?;
-    unsafe { gl::UseProgram(program) };
+    unsafe {
+        gl::UseProgram(program);
+        time_uniform = gl::GetUniformLocation(program, c"time".as_ptr());
+    };
 
     let mut font_texture = 0;
     let (mut pixels, width, height) = load_img("charmap-oldschool_white.png");
@@ -246,6 +249,8 @@ fn main() -> Result<(), String> {
         );
     }
 
+    let timer = sdl_context.timer()?;
+
     let mut event_pump = sdl_context.event_pump()?;
     let mut quit = false;
     while !quit {
@@ -257,6 +262,7 @@ fn main() -> Result<(), String> {
         }
 
         unsafe {
+            gl::Uniform1f(time_uniform, timer.ticks() as f32 / 1000.0);
             gl::Clear(gl::COLOR_BUFFER_BIT);
             gl::ClearColor(0.0, 0.0, 0.0, 1.0);
             gl::DrawArrays(gl::TRIANGLE_STRIP, 0, 4);
