@@ -9,13 +9,17 @@ use sdl2::surface::Surface;
 use stb_image::stb_image::{stbi_load, stbi_set_flip_vertically_on_load};
 use std::ffi::c_void;
 use std::ffi::CString;
+use std::mem::offset_of;
 
 use red::editor::Editor;
 use red::shaders;
-use red::vector2::Vector2;
+use red::small_array::SmallArray;
+use red::vector::{Vector2, Vector4};
 
-const SCREEN_WIDTH: u32 = 1280;
-const SCREEN_HEIGHT: u32 = 720;
+const SCREEN_WIDTH: u32 = 800;
+const SCREEN_HEIGHT: u32 = 600;
+// const SCREEN_WIDTH: u32 = 1280;
+// const SCREEN_HEIGHT: u32 = 720;
 const FPS: u32 = 60;
 const DELTA_TIME: f32 = 1.0 / FPS as f32;
 
@@ -185,6 +189,89 @@ fn render_cursor(
     Ok(())
 }
 
+#[repr(C)]
+struct Glyph {
+    pos: Vector2<f32>,
+    scale: f32,
+    ch: f32,
+    color: Vector4<f32>,
+}
+
+const GLYPH_BUFF_CAP: usize = 1024;
+type GlyphBuffer = SmallArray<GLYPH_BUFF_CAP, Glyph>;
+
+enum GlyphAttr {
+    Pos = 0,
+    Scale,
+    Ch,
+    Color,
+}
+
+fn gl_render_text(
+    glyph_buffer: &mut GlyphBuffer,
+    text: &str,
+    pos: Vector2<f32>,
+    scale: f32,
+    color: Vector4<f32>,
+) {
+    let char_size = Vector2::new(FONT_CHAR_WIDTH as f32, FONT_CHAR_HEIGHT as f32);
+    for (i, ch) in text.chars().enumerate() {
+        let glyph = Glyph {
+            pos: pos + (char_size * Vector2::new(i as f32, 0.0) * Vector2::from_scalar(scale)),
+            scale,
+            ch: u32::from(ch) as f32, // I hate my life
+            color,
+        };
+        glyph_buffer.push(glyph);
+    }
+}
+
+fn glyph_buffer_sync(glyph_buffer: &GlyphBuffer) {
+    unsafe {
+        gl::BufferSubData(
+            gl::ARRAY_BUFFER,
+            0,
+            (glyph_buffer.count * size_of::<Glyph>()) as isize,
+            glyph_buffer.as_ptr() as *const c_void,
+        );
+    }
+}
+
+#[allow(unused)]
+fn gl_check_errors() {
+    let mut err = unsafe { gl::GetError() };
+    while err != gl::NO_ERROR {
+        match err {
+            gl::INVALID_ENUM => {
+                eprintln!("enumeration parameter is not a legal enumeration for that function");
+            }
+            gl::INVALID_VALUE => {
+                eprintln!("value parameter is not a legal value for that function");
+            }
+            gl::INVALID_OPERATION => {
+                eprintln!("the set of state for a command is not legal for the parameters given to that command");
+            }
+            gl::STACK_OVERFLOW => {
+                eprintln!("stack pushing operation cannot be done because it would overflow the limit of that stack's size");
+            }
+            gl::STACK_UNDERFLOW => {
+                eprintln!("stack popping operation cannot be done because the stack is already at its lowest point");
+            }
+            gl::OUT_OF_MEMORY => {
+                eprintln!("performing an operation that can allocate memory, and the memory cannot be allocated");
+            }
+            gl::INVALID_FRAMEBUFFER_OPERATION => {
+                eprintln!("doing anything that would attempt to read from or write/render to a framebuffer that is not complete");
+            }
+            gl::CONTEXT_LOST => {
+                eprintln!("OpenGL context has been lost, due to a graphics card reset");
+            }
+            _ => {}
+        };
+        err = unsafe { gl::GetError() };
+    }
+}
+
 fn main() -> Result<(), String> {
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
@@ -192,6 +279,8 @@ fn main() -> Result<(), String> {
     let gl_attr = video_subsystem.gl_attr();
     gl_attr.set_context_profile(sdl2::video::GLProfile::Core);
     gl_attr.set_context_version(3, 3);
+    // let (gl_ver_maj, gl_ver_min) = gl_attr.context_version();
+    // println!("opengl version: {}.{}", gl_ver_maj, gl_ver_min);
 
     let window = video_subsystem
         .window("red", SCREEN_WIDTH, SCREEN_HEIGHT)
@@ -210,17 +299,32 @@ fn main() -> Result<(), String> {
     }
 
     let mut vao: GLuint = 0;
-
     unsafe {
         gl::GenVertexArrays(1, &mut vao);
         gl::BindVertexArray(vao);
     }
 
-    let time_uniform;
     let program = shaders::load("shaders/font.vert", "shaders/font.frag")?;
     unsafe {
         gl::UseProgram(program);
+    }
+
+    let time_uniform;
+    unsafe {
         time_uniform = gl::GetUniformLocation(program, c"time".as_ptr());
+        if time_uniform == -1 {
+            eprintln!("time uniform not found");
+        }
+
+        let resolution_uniform = gl::GetUniformLocation(program, c"resolution".as_ptr());
+        if resolution_uniform == -1 {
+            eprintln!("resolution uniform not found");
+        }
+        gl::Uniform2f(
+            resolution_uniform,
+            SCREEN_WIDTH as f32,
+            SCREEN_HEIGHT as f32,
+        );
     };
 
     let mut font_texture = 0;
@@ -249,6 +353,89 @@ fn main() -> Result<(), String> {
         );
     }
 
+    let mut vbo: GLuint = 0;
+    let mut glyph_buffer: GlyphBuffer = SmallArray::new();
+
+    unsafe {
+        gl::GenBuffers(1, &mut vbo);
+        gl::BindBuffer(gl::ARRAY_BUFFER, vbo);
+        gl::BufferData(
+            gl::ARRAY_BUFFER,
+            // size_of_val(&glyph_buffer.data) as isize,
+            size_of::<[Glyph; GLYPH_BUFF_CAP]>() as isize,
+            glyph_buffer.as_ptr() as *const std::ffi::c_void,
+            gl::DYNAMIC_DRAW,
+        );
+    }
+
+    // std::ptr::from_ref needs a temp var...
+    let offset_of_pos = offset_of!(Glyph, pos);
+    let offset_of_scale = offset_of!(Glyph, scale);
+    let offset_of_ch = offset_of!(Glyph, ch);
+    let offset_of_color = offset_of!(Glyph, color);
+    unsafe {
+        gl::EnableVertexAttribArray(GlyphAttr::Pos as u32);
+        gl::VertexAttribPointer(
+            GlyphAttr::Pos as u32,
+            2,
+            gl::FLOAT,
+            gl::FALSE,
+            size_of::<Glyph>() as i32,
+            &offset_of_pos as *const usize as *const std::ffi::c_void,
+        );
+        gl::VertexAttribDivisor(GlyphAttr::Pos as u32, 1);
+
+        gl::EnableVertexAttribArray(GlyphAttr::Scale as u32);
+        gl::VertexAttribPointer(
+            GlyphAttr::Scale as u32,
+            1,
+            gl::FLOAT,
+            gl::FALSE,
+            size_of::<Glyph>() as i32,
+            &offset_of_scale as *const usize as *const std::ffi::c_void,
+        );
+        gl::VertexAttribDivisor(GlyphAttr::Scale as u32, 1);
+
+        gl::EnableVertexAttribArray(GlyphAttr::Ch as u32);
+        gl::VertexAttribPointer(
+            GlyphAttr::Ch as u32,
+            1,
+            gl::FLOAT,
+            gl::FALSE,
+            size_of::<Glyph>() as i32,
+            &offset_of_ch as *const usize as *const std::ffi::c_void,
+        );
+        gl::VertexAttribDivisor(GlyphAttr::Ch as u32, 1);
+
+        gl::EnableVertexAttribArray(GlyphAttr::Color as u32);
+        gl::VertexAttribPointer(
+            GlyphAttr::Color as u32,
+            4,
+            gl::FLOAT,
+            gl::FALSE,
+            size_of::<Glyph>() as i32,
+            &offset_of_color as *const usize as *const std::ffi::c_void,
+        );
+        gl::VertexAttribDivisor(GlyphAttr::Color as u32, 1);
+    }
+
+    let text = "Hello World!";
+    let color = Vector4::new(1.0, 1.0, 0.0, 1.0);
+    gl_render_text(
+        &mut glyph_buffer,
+        text,
+        Vector2::from_scalar(0.0),
+        // FONT_SCALE,
+        5.0,
+        color,
+    );
+    glyph_buffer_sync(&glyph_buffer);
+    // println!(
+    //     "First glyph pos: {:?}, scale: {}",
+    //     glyph_buffer[11].pos, glyph_buffer[11].scale
+    // );
+    gl_check_errors();
+
     let timer = sdl_context.timer()?;
 
     let mut event_pump = sdl_context.event_pump()?;
@@ -262,10 +449,11 @@ fn main() -> Result<(), String> {
         }
 
         unsafe {
-            gl::Uniform1f(time_uniform, timer.ticks() as f32 / 1000.0);
-            gl::Clear(gl::COLOR_BUFFER_BIT);
             gl::ClearColor(0.0, 0.0, 0.0, 1.0);
-            gl::DrawArrays(gl::TRIANGLE_STRIP, 0, 4);
+            gl::Clear(gl::COLOR_BUFFER_BIT);
+            gl::Uniform1f(time_uniform, timer.ticks() as f32 / 1000.0);
+            gl::DrawArraysInstanced(gl::TRIANGLE_STRIP, 0, 4, glyph_buffer.count as i32);
+            // gl_check_errors();
         }
 
         window.gl_swap_window();

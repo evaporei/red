@@ -1,5 +1,5 @@
 use gl::types::{GLboolean, GLchar, GLenum, GLint, GLuint};
-use std::ffi::{c_char, CStr, CString};
+use std::ffi::CString;
 use std::fs;
 
 fn check_error(shader: GLuint, flag: GLuint, is_program: bool) -> Result<(), String> {

@@ -1,4 +1,4 @@
-use crate::vector2::Vector2;
+use crate::vector::Vector2;
 
 #[derive(Default)]
 pub struct Line {
