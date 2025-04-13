@@ -2,11 +2,9 @@
 
 #define FONT_WIDTH 128
 #define FONT_HEIGHT 64
-
 #define FONT_COLS 18
 #define FONT_ROWS 7
-
-#define FONT_CHAR_WIDTH (FONT_WIDTH / FONT_COLS)
+#define FONT_CHAR_WIDTH  (FONT_WIDTH  / FONT_COLS)
 #define FONT_CHAR_HEIGHT (FONT_HEIGHT / FONT_ROWS)
 
 uniform vec2 resolution;
@@ -20,8 +18,8 @@ out vec2 uv;
 out float glyph_ch;
 out vec4 glyph_color;
 
-vec2 project_point(vec2 point) {
-    // return 2.0 * point / resolution - 1.0;
+vec2 project_point(vec2 point)
+{
     return 2.0 * point / resolution;
 }
 
@@ -29,15 +27,6 @@ void main() {
     uv = vec2(float(gl_VertexID & 1), float((gl_VertexID >> 1) & 1));
     vec2 char_size = vec2(float(FONT_CHAR_WIDTH), float(FONT_CHAR_HEIGHT));
     gl_Position = vec4(project_point(uv * char_size * scale + pos), 0.0, 1.0);
-
-    // uv = vec2(float(gl_VertexID & 1), float((gl_VertexID >> 1) & 1));
-    // vec2 pos2d = uv * 2.0 - 1.0; // Full screen quad
-    // gl_Position = vec4(pos2d, 0.0, 1.0);
-
-    // vec2 vertex_pos = uv * char_size * scale + pos;
-    // gl_Position = vec4(project_point(vertex_pos), 0.0, 1.0);
-    // glyph_color = vec4(vertex_pos / resolution, 0.0, 1.0); // This will help visualize the positions
-
     glyph_ch = ch;
     glyph_color = color;
 }

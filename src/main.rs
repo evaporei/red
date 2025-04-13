@@ -42,7 +42,6 @@ fn load_img(file_path: &str) -> (Vec<u8>, i32, i32) {
     let stbi_rgb_alpha = 4;
 
     let pixels = unsafe {
-        stbi_set_flip_vertically_on_load(1);
         stbi_load(
             c_path.as_ptr(),
             &mut width,
@@ -361,7 +360,6 @@ fn main() -> Result<(), String> {
         gl::BindBuffer(gl::ARRAY_BUFFER, vbo);
         gl::BufferData(
             gl::ARRAY_BUFFER,
-            // size_of_val(&glyph_buffer.data) as isize,
             size_of::<[Glyph; GLYPH_BUFF_CAP]>() as isize,
             glyph_buffer.as_ptr() as *const std::ffi::c_void,
             gl::DYNAMIC_DRAW,
@@ -381,7 +379,7 @@ fn main() -> Result<(), String> {
             gl::FLOAT,
             gl::FALSE,
             size_of::<Glyph>() as i32,
-            &offset_of_pos as *const usize as *const std::ffi::c_void,
+            offset_of_pos as *const usize as *const std::ffi::c_void,
         );
         gl::VertexAttribDivisor(GlyphAttr::Pos as u32, 1);
 
@@ -392,7 +390,7 @@ fn main() -> Result<(), String> {
             gl::FLOAT,
             gl::FALSE,
             size_of::<Glyph>() as i32,
-            &offset_of_scale as *const usize as *const std::ffi::c_void,
+            offset_of_scale as *const usize as *const std::ffi::c_void,
         );
         gl::VertexAttribDivisor(GlyphAttr::Scale as u32, 1);
 
@@ -403,7 +401,7 @@ fn main() -> Result<(), String> {
             gl::FLOAT,
             gl::FALSE,
             size_of::<Glyph>() as i32,
-            &offset_of_ch as *const usize as *const std::ffi::c_void,
+            offset_of_ch as *const usize as *const std::ffi::c_void,
         );
         gl::VertexAttribDivisor(GlyphAttr::Ch as u32, 1);
 
@@ -414,7 +412,7 @@ fn main() -> Result<(), String> {
             gl::FLOAT,
             gl::FALSE,
             size_of::<Glyph>() as i32,
-            &offset_of_color as *const usize as *const std::ffi::c_void,
+            offset_of_color as *const usize as *const std::ffi::c_void,
         );
         gl::VertexAttribDivisor(GlyphAttr::Color as u32, 1);
     }
@@ -430,10 +428,6 @@ fn main() -> Result<(), String> {
         color,
     );
     glyph_buffer_sync(&glyph_buffer);
-    // println!(
-    //     "First glyph pos: {:?}, scale: {}",
-    //     glyph_buffer[11].pos, glyph_buffer[11].scale
-    // );
     gl_check_errors();
 
     let timer = sdl_context.timer()?;
@@ -449,9 +443,9 @@ fn main() -> Result<(), String> {
         }
 
         unsafe {
-            gl::ClearColor(0.0, 0.0, 0.0, 1.0);
-            gl::Clear(gl::COLOR_BUFFER_BIT);
             gl::Uniform1f(time_uniform, timer.ticks() as f32 / 1000.0);
+            gl::Clear(gl::COLOR_BUFFER_BIT);
+            gl::ClearColor(0.0, 0.0, 0.0, 1.0);
             gl::DrawArraysInstanced(gl::TRIANGLE_STRIP, 0, 4, glyph_buffer.count as i32);
             // gl_check_errors();
         }
