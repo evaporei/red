@@ -8,3 +8,7 @@ To run on MacOS:
 $ export LIBRARY_PATH="$LIBRARY_PATH:$(brew --prefix)/lib"
 $ cargo run
 ```
+
+Demo:
+
+![red demo video](./red_demo.mov)
