@@ -17,7 +17,8 @@ uniform float time;
 
 in vec2 uv;
 flat in int glyph_ch;
-in vec4 glyph_color;
+in vec4 glyph_fg_color;
+in vec4 glyph_bg_color;
 
 layout(location = 0) out vec4 outFragColor;
 
@@ -34,5 +35,6 @@ void main() {
     vec2 size = vec2(FONT_CHAR_WIDTH_UV, -FONT_CHAR_HEIGHT_UV);
     vec2 t = pos + size * uv;
 
-    outFragColor = texture(font, t) * glyph_color;
+    vec4 tc = texture(font, t);
+    outFragColor = glyph_bg_color * (1.0 - tc.x) + tc.x * glyph_fg_color;
 }
