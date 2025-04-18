@@ -432,10 +432,7 @@ fn main() -> Result<(), String> {
         }
     }
 
-    let cursor = Vector2::new(0, 0);
-    unsafe {
-        gl::Uniform2i(cursor_uniform, cursor.x, cursor.y);
-    }
+    let mut cursor = Vector2::new(0, 0);
 
     let text = "Hello World!";
     let yellow = Vector4::new(1.0, 1.0, 0.0, 1.0);
@@ -453,7 +450,17 @@ fn main() -> Result<(), String> {
     while !quit {
         for event in event_pump.poll_iter() {
             match event {
-                sdl2::event::Event::Quit { .. } => quit = true,
+                Event::Quit { .. } => quit = true,
+                Event::KeyDown { keycode, .. } => match keycode {
+                    Some(key) => match key {
+                        Keycode::Down => cursor.y -= 1,
+                        Keycode::Up => cursor.y += 1,
+                        Keycode::Left => cursor.x -= 1,
+                        Keycode::Right => cursor.x += 1,
+                        _ => {}
+                    },
+                    _ => {}
+                },
                 _ => {}
             }
         }
@@ -466,6 +473,7 @@ fn main() -> Result<(), String> {
                 SCREEN_WIDTH as f32,
                 SCREEN_HEIGHT as f32,
             );
+            gl::Uniform2i(cursor_uniform, cursor.x, cursor.y);
 
             gl::Uniform1f(time_uniform, timer.ticks() as f32 / 1000.0);
             gl::Clear(gl::COLOR_BUFFER_BIT);
