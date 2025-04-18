@@ -196,15 +196,53 @@ struct Glyph {
     color: Vector4<f32>,
 }
 
+struct GlAttrib {
+    r#type: gl::types::GLenum,
+    comps: i32,
+    normalized: gl::types::GLboolean,
+    stride: i32,
+    offset: usize,
+}
+
+impl Glyph {
+    const fn gl_attributes() -> [GlAttrib; 4] {
+        let stride = size_of::<Glyph>() as i32;
+        let normalized = gl::FALSE;
+        [
+            GlAttrib {
+                r#type: gl::FLOAT,
+                comps: 2,
+                normalized,
+                stride,
+                offset: offset_of!(Glyph, pos),
+            },
+            GlAttrib {
+                r#type: gl::FLOAT,
+                comps: 1,
+                normalized,
+                stride,
+                offset: offset_of!(Glyph, scale),
+            },
+            GlAttrib {
+                r#type: gl::FLOAT,
+                comps: 1,
+                normalized,
+                stride,
+                offset: offset_of!(Glyph, ch),
+            },
+            GlAttrib {
+                r#type: gl::FLOAT,
+                comps: 4,
+                normalized,
+                stride,
+                offset: offset_of!(Glyph, color),
+            },
+        ]
+    }
+}
+
 const GLYPH_BUFF_CAP: usize = 1024;
 type GlyphBuffer = SmallArray<GLYPH_BUFF_CAP, Glyph>;
-
-enum GlyphAttr {
-    Pos = 0,
-    Scale,
-    Ch,
-    Color,
-}
 
 fn gl_render_text(
     glyph_buffer: &mut GlyphBuffer,
@@ -362,55 +400,21 @@ fn main() -> Result<(), String> {
         );
     }
 
-    // std::ptr::from_ref needs a temp var...
-    let offset_of_pos = offset_of!(Glyph, pos);
-    let offset_of_scale = offset_of!(Glyph, scale);
-    let offset_of_ch = offset_of!(Glyph, ch);
-    let offset_of_color = offset_of!(Glyph, color);
-    unsafe {
-        gl::EnableVertexAttribArray(GlyphAttr::Pos as u32);
-        gl::VertexAttribPointer(
-            GlyphAttr::Pos as u32,
-            2,
-            gl::FLOAT,
-            gl::FALSE,
-            size_of::<Glyph>() as i32,
-            offset_of_pos as *const usize as *const std::ffi::c_void,
-        );
-        gl::VertexAttribDivisor(GlyphAttr::Pos as u32, 1);
-
-        gl::EnableVertexAttribArray(GlyphAttr::Scale as u32);
-        gl::VertexAttribPointer(
-            GlyphAttr::Scale as u32,
-            1,
-            gl::FLOAT,
-            gl::FALSE,
-            size_of::<Glyph>() as i32,
-            offset_of_scale as *const usize as *const std::ffi::c_void,
-        );
-        gl::VertexAttribDivisor(GlyphAttr::Scale as u32, 1);
-
-        gl::EnableVertexAttribArray(GlyphAttr::Ch as u32);
-        gl::VertexAttribPointer(
-            GlyphAttr::Ch as u32,
-            1,
-            gl::FLOAT,
-            gl::FALSE,
-            size_of::<Glyph>() as i32,
-            offset_of_ch as *const usize as *const std::ffi::c_void,
-        );
-        gl::VertexAttribDivisor(GlyphAttr::Ch as u32, 1);
-
-        gl::EnableVertexAttribArray(GlyphAttr::Color as u32);
-        gl::VertexAttribPointer(
-            GlyphAttr::Color as u32,
-            4,
-            gl::FLOAT,
-            gl::FALSE,
-            size_of::<Glyph>() as i32,
-            offset_of_color as *const usize as *const std::ffi::c_void,
-        );
-        gl::VertexAttribDivisor(GlyphAttr::Color as u32, 1);
+    for (i, attrib) in Glyph::gl_attributes().into_iter().enumerate() {
+        let index = i as u32;
+        let offset = attrib.offset as *const usize as *const std::ffi::c_void;
+        unsafe {
+            gl::EnableVertexAttribArray(index);
+            gl::VertexAttribPointer(
+                index,
+                attrib.comps,
+                attrib.r#type,
+                attrib.normalized,
+                attrib.stride,
+                offset,
+            );
+            gl::VertexAttribDivisor(index, 1);
+        }
     }
 
     let text = "Hello World!";
