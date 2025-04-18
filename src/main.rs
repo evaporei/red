@@ -192,7 +192,8 @@ fn render_cursor(
 struct Glyph {
     tile: Vector2<i32>,
     ch: i32,
-    color: Vector4<f32>,
+    fg_color: Vector4<f32>,
+    bg_color: Vector4<f32>,
 }
 
 struct GlAttrib {
@@ -204,7 +205,7 @@ struct GlAttrib {
 }
 
 impl Glyph {
-    const fn gl_attributes() -> [GlAttrib; 3] {
+    const fn gl_attributes() -> [GlAttrib; 4] {
         let stride = size_of::<Glyph>() as i32;
         let normalized = gl::FALSE;
         [
@@ -227,7 +228,14 @@ impl Glyph {
                 comps: 4,
                 normalized,
                 stride,
-                offset: offset_of!(Glyph, color),
+                offset: offset_of!(Glyph, fg_color),
+            },
+            GlAttrib {
+                r#type: gl::FLOAT,
+                comps: 4,
+                normalized,
+                stride,
+                offset: offset_of!(Glyph, bg_color),
             },
         ]
     }
@@ -240,13 +248,15 @@ fn gl_render_text(
     glyph_buffer: &mut GlyphBuffer,
     text: &str,
     tile: Vector2<i32>,
-    color: Vector4<f32>,
+    fg_color: Vector4<f32>,
+    bg_color: Vector4<f32>,
 ) {
     for (i, ch) in text.chars().enumerate() {
         let glyph = Glyph {
             tile: tile + Vector2::new(i as i32, 0),
             ch: ch as i32,
-            color,
+            fg_color,
+            bg_color,
         };
         glyph_buffer.push(glyph);
     }
@@ -337,7 +347,6 @@ fn main() -> Result<(), String> {
 
     let time_uniform;
     let resolution_uniform;
-    let cursor_uniform;
     unsafe {
         time_uniform = gl::GetUniformLocation(program, c"time".as_ptr());
         if time_uniform == -1 {
@@ -354,11 +363,6 @@ fn main() -> Result<(), String> {
             eprintln!("scale uniform not found");
         }
         gl::Uniform1f(scale_uniform, FONT_SCALE);
-
-        cursor_uniform = gl::GetUniformLocation(program, c"cursor".as_ptr());
-        if cursor_uniform == -1 {
-            eprintln!("cursor uniform not found");
-        }
     };
 
     let mut font_texture = 0;
@@ -432,14 +436,19 @@ fn main() -> Result<(), String> {
         }
     }
 
-    let mut cursor = Vector2::new(0, 0);
-
+    let black = Vector4::from_scalar(0.0);
     let text = "Hello World!";
     let yellow = Vector4::new(1.0, 1.0, 0.0, 1.0);
-    gl_render_text(&mut glyph_buffer, text, Vector2::from_scalar(0), yellow);
+    gl_render_text(
+        &mut glyph_buffer,
+        text,
+        Vector2::from_scalar(0),
+        yellow,
+        black,
+    );
     let text = "foo barrr";
     let purple = Vector4::new(1.0, 0.0, 1.0, 1.0);
-    gl_render_text(&mut glyph_buffer, text, Vector2::new(0, 1), purple);
+    gl_render_text(&mut glyph_buffer, text, Vector2::new(0, 1), purple, black);
     glyph_buffer_sync(&glyph_buffer);
     gl_check_errors();
 
@@ -453,10 +462,6 @@ fn main() -> Result<(), String> {
                 Event::Quit { .. } => quit = true,
                 Event::KeyDown { keycode, .. } => match keycode {
                     Some(key) => match key {
-                        Keycode::Down => cursor.y -= 1,
-                        Keycode::Up => cursor.y += 1,
-                        Keycode::Left => cursor.x -= 1,
-                        Keycode::Right => cursor.x += 1,
                         _ => {}
                     },
                     _ => {}
@@ -473,7 +478,6 @@ fn main() -> Result<(), String> {
                 SCREEN_WIDTH as f32,
                 SCREEN_HEIGHT as f32,
             );
-            gl::Uniform2i(cursor_uniform, cursor.x, cursor.y);
 
             gl::Uniform1f(time_uniform, timer.ticks() as f32 / 1000.0);
             gl::Clear(gl::COLOR_BUFFER_BIT);
