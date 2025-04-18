@@ -241,8 +241,8 @@ impl Glyph {
     }
 }
 
-const GLYPH_BUFF_CAP: usize = 1024;
-type GlyphBuffer = SmallArray<GLYPH_BUFF_CAP, Glyph>;
+const GLYPH_BUFF_CAP: usize = 640 * 1024;
+type GlyphBuffer = Vec<Glyph>;
 
 fn gl_render_text(
     glyph_buffer: &mut GlyphBuffer,
@@ -267,7 +267,7 @@ fn glyph_buffer_sync(glyph_buffer: &GlyphBuffer) {
         gl::BufferSubData(
             gl::ARRAY_BUFFER,
             0,
-            (glyph_buffer.count * size_of::<Glyph>()) as isize,
+            (glyph_buffer.len() * size_of::<Glyph>()) as isize,
             glyph_buffer.as_ptr() as *const c_void,
         );
     }
@@ -392,7 +392,7 @@ fn main() -> Result<(), String> {
     }
 
     let mut vbo: GLuint = 0;
-    let mut glyph_buffer: GlyphBuffer = SmallArray::new();
+    let mut glyph_buffer = Vec::with_capacity(GLYPH_BUFF_CAP);
 
     unsafe {
         gl::GenBuffers(1, &mut vbo);
@@ -436,21 +436,14 @@ fn main() -> Result<(), String> {
         }
     }
 
+    let mut editor = if let Some(filepath) = std::env::args().skip(1).next() {
+        Editor::from_filepath(filepath).map_err(|e| e.to_string())?
+    } else {
+        Editor::new()
+    };
+
     let black = Vector4::from_scalar(0.0);
-    let text = "Hello World!";
     let yellow = Vector4::new(1.0, 1.0, 0.0, 1.0);
-    gl_render_text(
-        &mut glyph_buffer,
-        text,
-        Vector2::from_scalar(0),
-        yellow,
-        black,
-    );
-    let text = "foo barrr";
-    let purple = Vector4::new(1.0, 0.0, 1.0, 1.0);
-    gl_render_text(&mut glyph_buffer, text, Vector2::new(0, 1), purple, black);
-    glyph_buffer_sync(&glyph_buffer);
-    gl_check_errors();
 
     let timer = sdl_context.timer()?;
 
@@ -462,6 +455,17 @@ fn main() -> Result<(), String> {
                 Event::Quit { .. } => quit = true,
                 Event::KeyDown { keycode, .. } => match keycode {
                     Some(key) => match key {
+                        Keycode::F2 => match editor.save() {
+                            Ok(_) => println!("saved file!"),
+                            Err(err) => eprintln!("{}", err),
+                        },
+                        Keycode::Backspace => editor.backspace(),
+                        Keycode::Delete => editor.delete(),
+                        Keycode::Left => editor.move_left(),
+                        Keycode::Right => editor.move_right(),
+                        Keycode::Up => editor.move_up(),
+                        Keycode::Down => editor.move_down(),
+                        Keycode::Return => editor.newline(),
                         _ => {}
                     },
                     _ => {}
@@ -469,6 +473,18 @@ fn main() -> Result<(), String> {
                 _ => {}
             }
         }
+
+        glyph_buffer.clear();
+        for (i, line) in editor.lines.iter().enumerate() {
+            gl_render_text(
+                &mut glyph_buffer,
+                &line.chars,
+                Vector2::new(0, -(i as i32)),
+                yellow,
+                black,
+            );
+        }
+        glyph_buffer_sync(&glyph_buffer);
 
         unsafe {
             let (width, height) = window.size();
@@ -482,7 +498,7 @@ fn main() -> Result<(), String> {
             gl::Uniform1f(time_uniform, timer.ticks() as f32 / 1000.0);
             gl::Clear(gl::COLOR_BUFFER_BIT);
             gl::ClearColor(0.0, 0.0, 0.0, 1.0);
-            gl::DrawArraysInstanced(gl::TRIANGLE_STRIP, 0, 4, glyph_buffer.count as i32);
+            gl::DrawArraysInstanced(gl::TRIANGLE_STRIP, 0, 4, glyph_buffer.len() as i32);
             // gl_check_errors();
         }
 
