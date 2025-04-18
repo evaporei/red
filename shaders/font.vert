@@ -9,6 +9,7 @@
 
 uniform vec2 resolution;
 uniform float scale;
+uniform vec2 camera;
 
 layout(location = 0) in ivec2 tile;
 layout(location = 1) in int ch;
@@ -22,7 +23,7 @@ out vec4 glyph_bg_color;
 
 vec2 project_point(vec2 point)
 {
-    return 2.0 * point / resolution;
+    return 2.0 * (point - camera) / resolution;
 }
 
 void main() {

@@ -347,6 +347,7 @@ fn main() -> Result<(), String> {
 
     let time_uniform;
     let resolution_uniform;
+    let camera_uniform;
     unsafe {
         time_uniform = gl::GetUniformLocation(program, c"time".as_ptr());
         if time_uniform == -1 {
@@ -363,6 +364,11 @@ fn main() -> Result<(), String> {
             eprintln!("scale uniform not found");
         }
         gl::Uniform1f(scale_uniform, FONT_SCALE);
+
+        camera_uniform = gl::GetUniformLocation(program, c"camera".as_ptr());
+        if camera_uniform == -1 {
+            eprintln!("camera uniform not found");
+        }
     };
 
     let mut font_texture = 0;
@@ -447,9 +453,13 @@ fn main() -> Result<(), String> {
 
     let timer = sdl_context.timer()?;
 
+    let mut camera_pos = Vector2::new(0.0, 0.0);
+    let mut camera_vel;
+
     let mut event_pump = sdl_context.event_pump()?;
     let mut quit = false;
     while !quit {
+        let start = timer.ticks();
         for event in event_pump.poll_iter() {
             match event {
                 Event::Quit { .. } => quit = true,
@@ -474,6 +484,14 @@ fn main() -> Result<(), String> {
             }
         }
 
+        let cursor_pos = Vector2::new(
+            editor.cursor.x as f32 * FONT_CHAR_WIDTH as f32 * FONT_SCALE,
+            -(editor.cursor.y as isize) as f32 * FONT_CHAR_HEIGHT as f32 * FONT_SCALE,
+        );
+
+        camera_vel = (cursor_pos - camera_pos) * Vector2::from_scalar(2.0);
+        camera_pos += camera_vel * Vector2::from_scalar(DELTA_TIME);
+
         glyph_buffer.clear();
         for (i, line) in editor.lines.iter().enumerate() {
             gl_render_text(
@@ -494,6 +512,7 @@ fn main() -> Result<(), String> {
                 SCREEN_WIDTH as f32,
                 SCREEN_HEIGHT as f32,
             );
+            gl::Uniform2f(camera_uniform, camera_pos.x, camera_pos.y);
 
             gl::Uniform1f(time_uniform, timer.ticks() as f32 / 1000.0);
             gl::Clear(gl::COLOR_BUFFER_BIT);
@@ -503,6 +522,12 @@ fn main() -> Result<(), String> {
         }
 
         window.gl_swap_window();
+
+        let duration = timer.ticks() - start;
+        let delta_time_ms = 1000 / FPS;
+        if duration < delta_time_ms {
+            timer.delay(delta_time_ms - duration);
+        }
     }
 
     Ok(())
