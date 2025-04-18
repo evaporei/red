@@ -16,7 +16,7 @@ uniform sampler2D font;
 uniform float time;
 
 in vec2 uv;
-in float glyph_ch;
+flat in int glyph_ch;
 in vec4 glyph_color;
 
 layout(location = 0) out vec4 outFragColor;

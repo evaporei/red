@@ -190,9 +190,8 @@ fn render_cursor(
 
 #[repr(C)]
 struct Glyph {
-    pos: Vector2<f32>,
-    scale: f32,
-    ch: f32,
+    tile: Vector2<i32>,
+    ch: i32,
     color: Vector4<f32>,
 }
 
@@ -205,26 +204,19 @@ struct GlAttrib {
 }
 
 impl Glyph {
-    const fn gl_attributes() -> [GlAttrib; 4] {
+    const fn gl_attributes() -> [GlAttrib; 3] {
         let stride = size_of::<Glyph>() as i32;
         let normalized = gl::FALSE;
         [
             GlAttrib {
-                r#type: gl::FLOAT,
+                r#type: gl::INT,
                 comps: 2,
                 normalized,
                 stride,
-                offset: offset_of!(Glyph, pos),
+                offset: offset_of!(Glyph, tile),
             },
             GlAttrib {
-                r#type: gl::FLOAT,
-                comps: 1,
-                normalized,
-                stride,
-                offset: offset_of!(Glyph, scale),
-            },
-            GlAttrib {
-                r#type: gl::FLOAT,
+                r#type: gl::INT,
                 comps: 1,
                 normalized,
                 stride,
@@ -247,16 +239,13 @@ type GlyphBuffer = SmallArray<GLYPH_BUFF_CAP, Glyph>;
 fn gl_render_text(
     glyph_buffer: &mut GlyphBuffer,
     text: &str,
-    pos: Vector2<f32>,
-    scale: f32,
+    tile: Vector2<i32>,
     color: Vector4<f32>,
 ) {
-    let char_size = Vector2::new(FONT_CHAR_WIDTH as f32, FONT_CHAR_HEIGHT as f32);
     for (i, ch) in text.chars().enumerate() {
         let glyph = Glyph {
-            pos: pos + (char_size * Vector2::new(i as f32, 0.0) * Vector2::from_scalar(scale)),
-            scale,
-            ch: u32::from(ch) as f32, // I hate my life
+            tile: tile + Vector2::new(i as i32, 0),
+            ch: ch as i32,
             color,
         };
         glyph_buffer.push(glyph);
@@ -358,6 +347,12 @@ fn main() -> Result<(), String> {
         if resolution_uniform == -1 {
             eprintln!("resolution uniform not found");
         }
+
+        let scale_uniform = gl::GetUniformLocation(program, c"scale".as_ptr());
+        if scale_uniform == -1 {
+            eprintln!("scale uniform not found");
+        }
+        gl::Uniform1f(scale_uniform, FONT_SCALE);
     };
 
     let mut font_texture = 0;
@@ -405,28 +400,38 @@ fn main() -> Result<(), String> {
         let offset = attrib.offset as *const usize as *const std::ffi::c_void;
         unsafe {
             gl::EnableVertexAttribArray(index);
-            gl::VertexAttribPointer(
-                index,
-                attrib.comps,
-                attrib.r#type,
-                attrib.normalized,
-                attrib.stride,
-                offset,
-            );
+            match attrib.r#type {
+                gl::FLOAT => {
+                    gl::VertexAttribPointer(
+                        index,
+                        attrib.comps,
+                        attrib.r#type,
+                        attrib.normalized,
+                        attrib.stride,
+                        offset,
+                    );
+                }
+                gl::INT => {
+                    gl::VertexAttribIPointer(
+                        index,
+                        attrib.comps,
+                        attrib.r#type,
+                        attrib.stride,
+                        offset,
+                    );
+                }
+                _ => unimplemented!("handle new gl attribute type"),
+            }
             gl::VertexAttribDivisor(index, 1);
         }
     }
 
     let text = "Hello World!";
-    let color = Vector4::new(1.0, 1.0, 0.0, 1.0);
-    gl_render_text(
-        &mut glyph_buffer,
-        text,
-        Vector2::from_scalar(0.0),
-        // FONT_SCALE,
-        5.0,
-        color,
-    );
+    let yellow = Vector4::new(1.0, 1.0, 0.0, 1.0);
+    gl_render_text(&mut glyph_buffer, text, Vector2::from_scalar(0), yellow);
+    let text = "foo barrr";
+    let purple = Vector4::new(1.0, 0.0, 1.0, 1.0);
+    gl_render_text(&mut glyph_buffer, text, Vector2::new(0, 1), purple);
     glyph_buffer_sync(&glyph_buffer);
     gl_check_errors();
 
