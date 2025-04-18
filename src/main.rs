@@ -309,21 +309,17 @@ fn main() -> Result<(), String> {
     }
 
     let time_uniform;
+    let resolution_uniform;
     unsafe {
         time_uniform = gl::GetUniformLocation(program, c"time".as_ptr());
         if time_uniform == -1 {
             eprintln!("time uniform not found");
         }
 
-        let resolution_uniform = gl::GetUniformLocation(program, c"resolution".as_ptr());
+        resolution_uniform = gl::GetUniformLocation(program, c"resolution".as_ptr());
         if resolution_uniform == -1 {
             eprintln!("resolution uniform not found");
         }
-        gl::Uniform2f(
-            resolution_uniform,
-            SCREEN_WIDTH as f32,
-            SCREEN_HEIGHT as f32,
-        );
     };
 
     let mut font_texture = 0;
@@ -443,6 +439,14 @@ fn main() -> Result<(), String> {
         }
 
         unsafe {
+            let (width, height) = window.size();
+            gl::Viewport(0, 0, width as i32, height as i32);
+            gl::Uniform2f(
+                resolution_uniform,
+                SCREEN_WIDTH as f32,
+                SCREEN_HEIGHT as f32,
+            );
+
             gl::Uniform1f(time_uniform, timer.ticks() as f32 / 1000.0);
             gl::Clear(gl::COLOR_BUFFER_BIT);
             gl::ClearColor(0.0, 0.0, 0.0, 1.0);
