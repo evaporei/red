@@ -337,6 +337,7 @@ fn main() -> Result<(), String> {
 
     let time_uniform;
     let resolution_uniform;
+    let cursor_uniform;
     unsafe {
         time_uniform = gl::GetUniformLocation(program, c"time".as_ptr());
         if time_uniform == -1 {
@@ -353,6 +354,11 @@ fn main() -> Result<(), String> {
             eprintln!("scale uniform not found");
         }
         gl::Uniform1f(scale_uniform, FONT_SCALE);
+
+        cursor_uniform = gl::GetUniformLocation(program, c"cursor".as_ptr());
+        if cursor_uniform == -1 {
+            eprintln!("cursor uniform not found");
+        }
     };
 
     let mut font_texture = 0;
@@ -424,6 +430,11 @@ fn main() -> Result<(), String> {
             }
             gl::VertexAttribDivisor(index, 1);
         }
+    }
+
+    let cursor = Vector2::new(0, 0);
+    unsafe {
+        gl::Uniform2i(cursor_uniform, cursor.x, cursor.y);
     }
 
     let text = "Hello World!";

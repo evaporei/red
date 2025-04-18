@@ -9,6 +9,7 @@
 
 uniform vec2 resolution;
 uniform float scale;
+uniform ivec2 cursor;
 
 layout(location = 0) in ivec2 tile;
 layout(location = 1) in int ch;
@@ -30,6 +31,12 @@ void main() {
     vec2 pos = tile * char_size * scale;
     gl_Position = vec4(project_point(uv * char_size * scale + pos), 0.0, 1.0);
     glyph_ch = ch;
-    glyph_fg_color = color;
-    glyph_bg_color = vec4(0.0);
+
+    if (cursor == tile) {
+        glyph_fg_color = vec4(0.0);
+        glyph_bg_color = vec4(1.0);
+    } else {
+        glyph_fg_color = color;
+        glyph_bg_color = vec4(0.0);
+    }
 }
