@@ -262,6 +262,16 @@ fn gl_render_text(
     }
 }
 
+fn gl_render_cursor(glyph_buffer: &mut GlyphBuffer, editor: &Editor) {
+    gl_render_text(
+        glyph_buffer,
+        &editor.char_at_cursor().unwrap_or(' ').to_string(),
+        Vector2::new(editor.cursor.x as i32, -(editor.cursor.y as i32)),
+        BLACK,
+        WHITE,
+    );
+}
+
 fn glyph_buffer_sync(glyph_buffer: &GlyphBuffer) {
     unsafe {
         gl::BufferSubData(
@@ -307,6 +317,10 @@ fn gl_check_errors() {
         err = unsafe { gl::GetError() };
     }
 }
+
+const BLACK: Vector4<f32> = Vector4::from_scalar(0.0);
+const WHITE: Vector4<f32> = Vector4::from_scalar(1.0);
+const YELLOW: Vector4<f32> = Vector4::new(1.0, 1.0, 0.0, 1.0);
 
 fn main() -> Result<(), String> {
     let sdl_context = sdl2::init()?;
@@ -448,9 +462,6 @@ fn main() -> Result<(), String> {
         Editor::new()
     };
 
-    let black = Vector4::from_scalar(0.0);
-    let yellow = Vector4::new(1.0, 1.0, 0.0, 1.0);
-
     let timer = sdl_context.timer()?;
 
     let mut camera_pos = Vector2::new(0.0, 0.0);
@@ -498,8 +509,8 @@ fn main() -> Result<(), String> {
                 &mut glyph_buffer,
                 &line.chars,
                 Vector2::new(0, -(i as i32)),
-                yellow,
-                black,
+                YELLOW,
+                BLACK,
             );
         }
         glyph_buffer_sync(&glyph_buffer);
@@ -519,6 +530,14 @@ fn main() -> Result<(), String> {
             gl::ClearColor(0.0, 0.0, 0.0, 1.0);
             gl::DrawArraysInstanced(gl::TRIANGLE_STRIP, 0, 4, glyph_buffer.len() as i32);
             // gl_check_errors();
+        }
+
+        glyph_buffer.clear();
+        gl_render_cursor(&mut glyph_buffer, &editor);
+        glyph_buffer_sync(&glyph_buffer);
+
+        unsafe {
+            gl::DrawArraysInstanced(gl::TRIANGLE_STRIP, 0, 4, glyph_buffer.len() as i32);
         }
 
         window.gl_swap_window();

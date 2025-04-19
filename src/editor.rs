@@ -133,4 +133,7 @@ impl Editor {
         self.lines[self.cursor.y].insert(self.cursor.x, text);
         self.cursor.x += text.len();
     }
+    pub fn char_at_cursor(&self) -> Option<char> {
+        self.lines[self.cursor.y].chars.chars().nth(self.cursor.x)
+    }
 }

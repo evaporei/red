@@ -6,10 +6,10 @@ pub struct Vector2<T> {
 }
 
 impl<T: Copy + Clone> Vector2<T> {
-    pub fn new(x: T, y: T) -> Vector2<T> {
+    pub const fn new(x: T, y: T) -> Vector2<T> {
         Vector2 { x, y }
     }
-    pub fn from_scalar(s: T) -> Vector2<T> {
+    pub const fn from_scalar(s: T) -> Vector2<T> {
         Vector2 { x: s, y: s }
     }
 }
@@ -94,10 +94,10 @@ pub struct Vector4<T> {
 }
 
 impl<T: Copy + Clone> Vector4<T> {
-    pub fn new(x: T, y: T, z: T, w: T) -> Vector4<T> {
+    pub const fn new(x: T, y: T, z: T, w: T) -> Vector4<T> {
         Vector4 { x, y, z, w }
     }
-    pub fn from_scalar(s: T) -> Vector4<T> {
+    pub const fn from_scalar(s: T) -> Vector4<T> {
         Vector4 {
             x: s,
             y: s,
