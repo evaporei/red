@@ -511,7 +511,7 @@ fn main() -> Result<(), String> {
                 &mut glyph_buffer,
                 &line.chars,
                 Vector2::new(0, -(i as i32)),
-                YELLOW,
+                WHITE,
                 BLACK,
             );
         }
