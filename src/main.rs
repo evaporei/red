@@ -492,6 +492,7 @@ fn main() -> Result<(), String> {
                     },
                     _ => {}
                 },
+                Event::TextInput { text, .. } => editor.insert_text(&text),
                 _ => {}
             }
         }
