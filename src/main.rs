@@ -16,14 +16,15 @@ use red::shaders;
 use red::small_array::SmallArray;
 use red::vector::{Vector2, Vector4};
 
-const SCREEN_WIDTH: u32 = 800;
-const SCREEN_HEIGHT: u32 = 600;
+const SCREEN_WIDTH: u32 = 1280;
+const SCREEN_HEIGHT: u32 = 720;
 // const SCREEN_WIDTH: u32 = 1280;
 // const SCREEN_HEIGHT: u32 = 720;
 const FPS: u32 = 60;
 const DELTA_TIME: f32 = 1.0 / FPS as f32;
 
-const FONT_SCALE: f32 = 3.0;
+const FONT_SCALE: f32 = 5.0;
+// const FONT_SCALE: f32 = 3.0;
 const FONT_WIDTH: usize = 128;
 const FONT_HEIGHT: usize = 64;
 
