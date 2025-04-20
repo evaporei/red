@@ -1,2 +1,4 @@
 pub mod editor;
-pub mod vector2;
+pub mod shaders;
+pub mod small_array;
+pub mod vector;
