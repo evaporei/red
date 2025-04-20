@@ -22,6 +22,10 @@ in vec4 glyph_bg_color;
 
 layout(location = 0) out vec4 outFragColor;
 
+float map01(float x) {
+    return (x + 1) / 2.0;
+}
+
 void main() {
     int ch = int(glyph_ch);
     if (!(ASCII_DISPLAY_LOW <= ch && ch <= ASCII_DISPLAY_HIGH)) {
@@ -36,5 +40,13 @@ void main() {
     vec2 t = pos + size * uv;
 
     vec4 tc = texture(font, t);
-    outFragColor = glyph_bg_color * (1.0 - tc.x) + tc.x * glyph_fg_color;
+
+    vec4 rainbow = vec4(
+            map01(sin(time + uv.x)),
+            map01(cos(time + uv.y)),
+            map01(sin(time + uv.x + uv.y)),
+            1.0
+        );
+
+    outFragColor = glyph_bg_color * (1.0 - tc.x) + tc.x * glyph_fg_color * rainbow;
 }
