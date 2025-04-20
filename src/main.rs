@@ -23,8 +23,8 @@ const SCREEN_HEIGHT: u32 = 720;
 const FPS: u32 = 60;
 const DELTA_TIME: f32 = 1.0 / FPS as f32;
 
-const FONT_SCALE: f32 = 5.0;
-// const FONT_SCALE: f32 = 3.0;
+// const FONT_SCALE: f32 = 5.0;
+const FONT_SCALE: f32 = 3.0;
 const FONT_WIDTH: usize = 128;
 const FONT_HEIGHT: usize = 64;
 

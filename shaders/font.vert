@@ -30,9 +30,9 @@ vec2 project_point(vec2 point)
 void main() {
     uv = vec2(float(gl_VertexID & 1), float((gl_VertexID >> 1) & 1));
     vec2 char_size = vec2(float(FONT_CHAR_WIDTH), float(FONT_CHAR_HEIGHT));
-    float amplitude = 5.0;
-    vec2 shaking = vec2(cos(time + tile.x), sin(time + tile.y)) * amplitude;
-    // vec2 shaking = vec2(1.0);
+    // float amplitude = 5.0;
+    // vec2 shaking = vec2(cos(time + tile.x), sin(time + tile.y)) * amplitude;
+    vec2 shaking = vec2(0.0);
     vec2 pos = tile * char_size * scale + shaking;
 
     gl_Position = vec4(project_point(uv * char_size * scale + pos), 0.0, 1.0);
