@@ -96,7 +96,7 @@ pub struct TileGlyphBuffer {
     pub time_uniform: GLint,
     pub resolution_uniform: GLint,
     pub camera_uniform: GLint,
-    buf: Vec<TileGlyph>,
+    glyphs: Vec<TileGlyph>,
 }
 
 // // tmp
@@ -109,7 +109,7 @@ impl TileGlyphBuffer {
             time_uniform: -1,
             resolution_uniform: -1,
             camera_uniform: -1,
-            buf: Vec::with_capacity(TILE_GLYPH_BUFF_CAP),
+            glyphs: Vec::with_capacity(TILE_GLYPH_BUFF_CAP),
         }
     }
     pub fn gl_init(&self) {
@@ -265,7 +265,7 @@ impl Deref for TileGlyphBuffer {
     type Target = Vec<TileGlyph>;
 
     fn deref(&self) -> &Self::Target {
-        &self.buf
+        &self.glyphs
     }
 }
 
@@ -273,6 +273,6 @@ use std::ops::DerefMut;
 
 impl DerefMut for TileGlyphBuffer {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.buf
+        &mut self.glyphs
     }
 }
