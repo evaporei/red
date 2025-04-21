@@ -129,37 +129,6 @@ fn main() -> Result<(), String> {
         gl::BindVertexArray(vao);
     }
 
-    let program = shaders::load("shaders/font.vert", "shaders/font.frag")?;
-    unsafe {
-        gl::UseProgram(program);
-    }
-
-    let time_uniform;
-    let resolution_uniform;
-    let camera_uniform;
-    unsafe {
-        time_uniform = gl::GetUniformLocation(program, c"time".as_ptr());
-        if time_uniform == -1 {
-            eprintln!("time uniform not found");
-        }
-
-        resolution_uniform = gl::GetUniformLocation(program, c"resolution".as_ptr());
-        if resolution_uniform == -1 {
-            eprintln!("resolution uniform not found");
-        }
-
-        let scale_uniform = gl::GetUniformLocation(program, c"scale".as_ptr());
-        if scale_uniform == -1 {
-            eprintln!("scale uniform not found");
-        }
-        gl::Uniform1f(scale_uniform, FONT_SCALE);
-
-        camera_uniform = gl::GetUniformLocation(program, c"camera".as_ptr());
-        if camera_uniform == -1 {
-            eprintln!("camera uniform not found");
-        }
-    };
-
     let mut vbo: GLuint = 0;
     let mut tile_glyph_buf = TileGlyphBuffer::new();
 
@@ -230,6 +199,37 @@ fn main() -> Result<(), String> {
             pixels.as_mut_ptr() as *mut c_void,
         );
     }
+
+    let program = shaders::load("shaders/font.vert", "shaders/font.frag")?;
+    unsafe {
+        gl::UseProgram(program);
+    }
+
+    let time_uniform;
+    let resolution_uniform;
+    let camera_uniform;
+    unsafe {
+        time_uniform = gl::GetUniformLocation(program, c"time".as_ptr());
+        if time_uniform == -1 {
+            eprintln!("time uniform not found");
+        }
+
+        resolution_uniform = gl::GetUniformLocation(program, c"resolution".as_ptr());
+        if resolution_uniform == -1 {
+            eprintln!("resolution uniform not found");
+        }
+
+        let scale_uniform = gl::GetUniformLocation(program, c"scale".as_ptr());
+        if scale_uniform == -1 {
+            eprintln!("scale uniform not found");
+        }
+        gl::Uniform1f(scale_uniform, FONT_SCALE);
+
+        camera_uniform = gl::GetUniformLocation(program, c"camera".as_ptr());
+        if camera_uniform == -1 {
+            eprintln!("camera uniform not found");
+        }
+    };
 
     let mut editor = if let Some(filepath) = std::env::args().skip(1).next() {
         Editor::from_filepath(filepath).map_err(|e| e.to_string())?
