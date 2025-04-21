@@ -123,16 +123,16 @@ fn main() -> Result<(), String> {
         gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
     }
 
-    let mut vao: GLuint = 0;
     unsafe {
+        let mut vao: GLuint = 0;
         gl::GenVertexArrays(1, &mut vao);
         gl::BindVertexArray(vao);
     }
 
-    let mut vbo: GLuint = 0;
     let mut tile_glyph_buf = TileGlyphBuffer::new();
 
     unsafe {
+        let mut vbo: GLuint = 0;
         gl::GenBuffers(1, &mut vbo);
         gl::BindBuffer(gl::ARRAY_BUFFER, vbo);
         gl::BufferData(
