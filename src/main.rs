@@ -1,7 +1,4 @@
-use gl::types::GLuint;
-use red::tile_glyph::TileGlyph;
 use red::tile_glyph::TileGlyphBuffer;
-use red::tile_glyph::TILE_GLYPH_BUFF_CAP;
 use red::BLACK;
 use red::WHITE;
 use sdl2::event::Event;
@@ -123,56 +120,9 @@ fn main() -> Result<(), String> {
         gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
     }
 
-    unsafe {
-        let mut vao: GLuint = 0;
-        gl::GenVertexArrays(1, &mut vao);
-        gl::BindVertexArray(vao);
-    }
-
     let mut tile_glyph_buf = TileGlyphBuffer::new();
 
-    unsafe {
-        let mut vbo: GLuint = 0;
-        gl::GenBuffers(1, &mut vbo);
-        gl::BindBuffer(gl::ARRAY_BUFFER, vbo);
-        gl::BufferData(
-            gl::ARRAY_BUFFER,
-            size_of::<[TileGlyph; TILE_GLYPH_BUFF_CAP]>() as isize,
-            tile_glyph_buf.as_ptr() as *const std::ffi::c_void,
-            gl::DYNAMIC_DRAW,
-        );
-    }
-
-    for (i, attrib) in TileGlyph::gl_attributes().into_iter().enumerate() {
-        let index = i as u32;
-        let offset = attrib.offset as *const usize as *const std::ffi::c_void;
-        unsafe {
-            gl::EnableVertexAttribArray(index);
-            match attrib.r#type {
-                gl::FLOAT => {
-                    gl::VertexAttribPointer(
-                        index,
-                        attrib.comps,
-                        attrib.r#type,
-                        attrib.normalized,
-                        attrib.stride,
-                        offset,
-                    );
-                }
-                gl::INT => {
-                    gl::VertexAttribIPointer(
-                        index,
-                        attrib.comps,
-                        attrib.r#type,
-                        attrib.stride,
-                        offset,
-                    );
-                }
-                _ => unimplemented!("handle new gl attribute type"),
-            }
-            gl::VertexAttribDivisor(index, 1);
-        }
-    }
+    tile_glyph_buf.gl_init();
 
     let mut font_texture = 0;
     let (mut pixels, width, height) = load_img("charmap-oldschool_white.png");

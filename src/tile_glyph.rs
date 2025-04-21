@@ -1,5 +1,7 @@
 use std::{ffi::c_void, mem::offset_of};
 
+use gl::types::GLuint;
+
 use crate::{editor::Editor, v2, vector::Vector2, Color, BLACK, WHITE};
 
 #[repr(C)]
@@ -55,13 +57,63 @@ impl TileGlyph {
     }
 }
 
-pub const TILE_GLYPH_BUFF_CAP: usize = 640 * 1024;
+const TILE_GLYPH_BUFF_CAP: usize = 640 * 1024;
 
 pub struct TileGlyphBuffer(Vec<TileGlyph>);
 
 impl TileGlyphBuffer {
     pub fn new() -> Self {
         Self(Vec::with_capacity(TILE_GLYPH_BUFF_CAP))
+    }
+    pub fn gl_init(&self) {
+        unsafe {
+            let mut vao: GLuint = 0;
+            gl::GenVertexArrays(1, &mut vao);
+            gl::BindVertexArray(vao);
+        }
+
+        unsafe {
+            let mut vbo: GLuint = 0;
+            gl::GenBuffers(1, &mut vbo);
+            gl::BindBuffer(gl::ARRAY_BUFFER, vbo);
+            gl::BufferData(
+                gl::ARRAY_BUFFER,
+                size_of::<[TileGlyph; TILE_GLYPH_BUFF_CAP]>() as isize,
+                self.as_ptr() as *const std::ffi::c_void,
+                gl::DYNAMIC_DRAW,
+            );
+        }
+
+        for (i, attrib) in TileGlyph::gl_attributes().into_iter().enumerate() {
+            let index = i as u32;
+            let offset = attrib.offset as *const usize as *const std::ffi::c_void;
+            unsafe {
+                gl::EnableVertexAttribArray(index);
+                match attrib.r#type {
+                    gl::FLOAT => {
+                        gl::VertexAttribPointer(
+                            index,
+                            attrib.comps,
+                            attrib.r#type,
+                            attrib.normalized,
+                            attrib.stride,
+                            offset,
+                        );
+                    }
+                    gl::INT => {
+                        gl::VertexAttribIPointer(
+                            index,
+                            attrib.comps,
+                            attrib.r#type,
+                            attrib.stride,
+                            offset,
+                        );
+                    }
+                    _ => unimplemented!("handle new gl attribute type"),
+                }
+                gl::VertexAttribDivisor(index, 1);
+            }
+        }
     }
     pub fn render_line(
         &mut self,
