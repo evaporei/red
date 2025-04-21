@@ -1,17 +1,19 @@
 use gl::types::GLuint;
+use red::tile_glyph;
+use red::tile_glyph::TileGlyph;
+use red::tile_glyph::TILE_GLYPH_BUFF_CAP;
+use red::BLACK;
+use red::WHITE;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use stb_image::stb_image::stbi_load;
 use std::ffi::c_void;
 use std::ffi::CString;
-use std::mem::offset_of;
 
 use red::editor::Editor;
 use red::shaders;
-use red::vector::{Vector2, Vector4};
-use red::{v2, v2s, v4s};
-
-type Color = Vector4<f32>;
+use red::vector::Vector2;
+use red::{v2, v2s};
 
 // const SCREEN_WIDTH: u32 = 800;
 // const SCREEN_HEIGHT: u32 = 600;
@@ -60,101 +62,6 @@ fn load_img(file_path: &str) -> (Vec<u8>, i32, i32) {
     )
 }
 
-#[repr(C)]
-struct TileGlyph {
-    tile: Vector2<i32>,
-    ch: i32,
-    fg_color: Color,
-    bg_color: Color,
-}
-
-struct GlAttrib {
-    r#type: gl::types::GLenum,
-    comps: i32,
-    normalized: gl::types::GLboolean,
-    stride: i32,
-    offset: usize,
-}
-
-impl TileGlyph {
-    const fn gl_attributes() -> [GlAttrib; 4] {
-        let stride = size_of::<TileGlyph>() as i32;
-        let normalized = gl::FALSE;
-        [
-            GlAttrib {
-                r#type: gl::INT,
-                comps: 2,
-                normalized,
-                stride,
-                offset: offset_of!(TileGlyph, tile),
-            },
-            GlAttrib {
-                r#type: gl::INT,
-                comps: 1,
-                normalized,
-                stride,
-                offset: offset_of!(TileGlyph, ch),
-            },
-            GlAttrib {
-                r#type: gl::FLOAT,
-                comps: 4,
-                normalized,
-                stride,
-                offset: offset_of!(TileGlyph, fg_color),
-            },
-            GlAttrib {
-                r#type: gl::FLOAT,
-                comps: 4,
-                normalized,
-                stride,
-                offset: offset_of!(TileGlyph, bg_color),
-            },
-        ]
-    }
-}
-
-const TILE_GLYPH_BUFF_CAP: usize = 640 * 1024;
-type TileGlyphBuffer = Vec<TileGlyph>;
-
-fn gl_render_text(
-    tile_glyph_buf: &mut TileGlyphBuffer,
-    text: &str,
-    tile: Vector2<i32>,
-    fg_color: Color,
-    bg_color: Color,
-) {
-    for (i, ch) in text.chars().enumerate() {
-        let tile_glyph = TileGlyph {
-            tile: tile + v2!(i as i32, 0),
-            ch: ch as i32,
-            fg_color,
-            bg_color,
-        };
-        tile_glyph_buf.push(tile_glyph);
-    }
-}
-
-fn gl_render_cursor(tile_glyph_buf: &mut TileGlyphBuffer, editor: &Editor) {
-    gl_render_text(
-        tile_glyph_buf,
-        &editor.char_at_cursor().unwrap_or(' ').to_string(),
-        v2!(editor.cursor.x as i32, -(editor.cursor.y as i32)),
-        BLACK,
-        WHITE,
-    );
-}
-
-fn tile_glyph_buf_sync(tile_glyph_buf: &TileGlyphBuffer) {
-    unsafe {
-        gl::BufferSubData(
-            gl::ARRAY_BUFFER,
-            0,
-            (tile_glyph_buf.len() * size_of::<TileGlyph>()) as isize,
-            tile_glyph_buf.as_ptr() as *const c_void,
-        );
-    }
-}
-
 #[allow(unused)]
 fn gl_check_errors() {
     let mut err = unsafe { gl::GetError() };
@@ -189,9 +96,6 @@ fn gl_check_errors() {
         err = unsafe { gl::GetError() };
     }
 }
-
-const BLACK: Color = v4s!(0.0);
-const WHITE: Color = v4s!(1.0);
 
 fn main() -> Result<(), String> {
     let sdl_context = sdl2::init()?;
@@ -377,7 +281,7 @@ fn main() -> Result<(), String> {
 
         tile_glyph_buf.clear();
         for (i, line) in editor.lines.iter().enumerate() {
-            gl_render_text(
+            tile_glyph::render_line(
                 &mut tile_glyph_buf,
                 &line.chars,
                 v2!(0, -(i as i32)),
@@ -385,7 +289,7 @@ fn main() -> Result<(), String> {
                 BLACK,
             );
         }
-        tile_glyph_buf_sync(&tile_glyph_buf);
+        tile_glyph::sync(&tile_glyph_buf);
 
         unsafe {
             let (width, height) = window.size();
@@ -405,8 +309,8 @@ fn main() -> Result<(), String> {
         }
 
         tile_glyph_buf.clear();
-        gl_render_cursor(&mut tile_glyph_buf, &editor);
-        tile_glyph_buf_sync(&tile_glyph_buf);
+        tile_glyph::gl_render_cursor(&mut tile_glyph_buf, &editor);
+        tile_glyph::sync(&tile_glyph_buf);
 
         unsafe {
             gl::DrawArraysInstanced(gl::TRIANGLE_STRIP, 0, 4, tile_glyph_buf.len() as i32);
