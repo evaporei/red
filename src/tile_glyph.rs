@@ -92,11 +92,15 @@ fn load_img(file_path: &str) -> (Vec<u8>, i32, i32) {
 
 const TILE_GLYPH_BUFF_CAP: usize = 640 * 1024;
 
-pub struct TileGlyphBuffer(Vec<TileGlyph>);
+pub struct TileGlyphBuffer {
+    buf: Vec<TileGlyph>,
+}
 
 impl TileGlyphBuffer {
     pub fn new() -> Self {
-        Self(Vec::with_capacity(TILE_GLYPH_BUFF_CAP))
+        Self {
+            buf: Vec::with_capacity(TILE_GLYPH_BUFF_CAP),
+        }
     }
     pub fn gl_init(&self) {
         unsafe {
@@ -220,7 +224,7 @@ impl Deref for TileGlyphBuffer {
     type Target = Vec<TileGlyph>;
 
     fn deref(&self) -> &Self::Target {
-        &self.0
+        &self.buf
     }
 }
 
@@ -228,6 +232,6 @@ use std::ops::DerefMut;
 
 impl DerefMut for TileGlyphBuffer {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
+        &mut self.buf
     }
 }
