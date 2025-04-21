@@ -3,7 +3,7 @@ use std::{
     mem::offset_of,
 };
 
-use gl::types::GLuint;
+use gl::types::{GLint, GLuint};
 use stb_image::stb_image::stbi_load;
 
 use crate::{editor::Editor, v2, vector::Vector2, Color, BLACK, WHITE};
@@ -93,12 +93,22 @@ fn load_img(file_path: &str) -> (Vec<u8>, i32, i32) {
 const TILE_GLYPH_BUFF_CAP: usize = 640 * 1024;
 
 pub struct TileGlyphBuffer {
+    pub time_uniform: GLint,
+    pub resolution_uniform: GLint,
+    pub camera_uniform: GLint,
     buf: Vec<TileGlyph>,
 }
+
+// // tmp
+// const FONT_SCALE: f32 = 5.0;
+const FONT_SCALE: f32 = 3.0;
 
 impl TileGlyphBuffer {
     pub fn new() -> Self {
         Self {
+            time_uniform: -1,
+            resolution_uniform: -1,
+            camera_uniform: -1,
             buf: Vec::with_capacity(TILE_GLYPH_BUFF_CAP),
         }
     }
@@ -178,6 +188,37 @@ impl TileGlyphBuffer {
                 pixels.as_mut_ptr() as *mut c_void,
             );
         }
+    }
+    pub fn compile_shaders(&mut self, vert_shader: &str, frag_shader: &str) -> Result<(), String> {
+        let program = crate::shaders::load(vert_shader, frag_shader)?;
+        unsafe {
+            gl::UseProgram(program);
+        }
+
+        unsafe {
+            self.time_uniform = gl::GetUniformLocation(program, c"time".as_ptr());
+            if self.time_uniform == -1 {
+                eprintln!("time uniform not found");
+            }
+
+            self.resolution_uniform = gl::GetUniformLocation(program, c"resolution".as_ptr());
+            if self.resolution_uniform == -1 {
+                eprintln!("resolution uniform not found");
+            }
+
+            let scale_uniform = gl::GetUniformLocation(program, c"scale".as_ptr());
+            if scale_uniform == -1 {
+                eprintln!("scale uniform not found");
+            }
+            gl::Uniform1f(scale_uniform, FONT_SCALE);
+
+            self.camera_uniform = gl::GetUniformLocation(program, c"camera".as_ptr());
+            if self.camera_uniform == -1 {
+                eprintln!("camera uniform not found");
+            }
+        };
+
+        Ok(())
     }
     pub fn render_line(
         &mut self,

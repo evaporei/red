@@ -5,7 +5,6 @@ use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 
 use red::editor::Editor;
-use red::shaders;
 use red::vector::Vector2;
 use red::{v2, v2s};
 
@@ -92,37 +91,7 @@ fn main() -> Result<(), String> {
 
     tile_glyph_buf.gl_init();
     tile_glyph_buf.load_texture_atlas("charmap-oldschool_white.png");
-
-    let program = shaders::load("shaders/font.vert", "shaders/font.frag")?;
-    unsafe {
-        gl::UseProgram(program);
-    }
-
-    let time_uniform;
-    let resolution_uniform;
-    let camera_uniform;
-    unsafe {
-        time_uniform = gl::GetUniformLocation(program, c"time".as_ptr());
-        if time_uniform == -1 {
-            eprintln!("time uniform not found");
-        }
-
-        resolution_uniform = gl::GetUniformLocation(program, c"resolution".as_ptr());
-        if resolution_uniform == -1 {
-            eprintln!("resolution uniform not found");
-        }
-
-        let scale_uniform = gl::GetUniformLocation(program, c"scale".as_ptr());
-        if scale_uniform == -1 {
-            eprintln!("scale uniform not found");
-        }
-        gl::Uniform1f(scale_uniform, FONT_SCALE);
-
-        camera_uniform = gl::GetUniformLocation(program, c"camera".as_ptr());
-        if camera_uniform == -1 {
-            eprintln!("camera uniform not found");
-        }
-    };
+    tile_glyph_buf.compile_shaders("shaders/font.vert", "shaders/font.frag")?;
 
     let mut editor = if let Some(filepath) = std::env::args().skip(1).next() {
         Editor::from_filepath(filepath).map_err(|e| e.to_string())?
@@ -182,13 +151,13 @@ fn main() -> Result<(), String> {
             let (width, height) = window.size();
             gl::Viewport(0, 0, width as i32, height as i32);
             gl::Uniform2f(
-                resolution_uniform,
+                tile_glyph_buf.resolution_uniform,
                 SCREEN_WIDTH as f32,
                 SCREEN_HEIGHT as f32,
             );
-            gl::Uniform2f(camera_uniform, camera_pos.x, camera_pos.y);
+            gl::Uniform2f(tile_glyph_buf.camera_uniform, camera_pos.x, camera_pos.y);
 
-            gl::Uniform1f(time_uniform, timer.ticks() as f32 / 1000.0);
+            gl::Uniform1f(tile_glyph_buf.time_uniform, timer.ticks() as f32 / 1000.0);
             gl::Clear(gl::COLOR_BUFFER_BIT);
             gl::ClearColor(0.0, 0.0, 0.0, 1.0);
             gl::DrawArraysInstanced(gl::TRIANGLE_STRIP, 0, 4, tile_glyph_buf.len() as i32);
