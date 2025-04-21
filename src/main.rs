@@ -160,32 +160,6 @@ fn main() -> Result<(), String> {
         }
     };
 
-    let mut font_texture = 0;
-    let (mut pixels, width, height) = load_img("charmap-oldschool_white.png");
-    unsafe {
-        gl::ActiveTexture(gl::TEXTURE0);
-        gl::GenTextures(1, &mut font_texture);
-        gl::BindTexture(gl::TEXTURE_2D, font_texture);
-
-        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
-        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
-
-        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32);
-        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32);
-
-        gl::TexImage2D(
-            gl::TEXTURE_2D,
-            0,
-            gl::RGBA as i32,
-            width,
-            height,
-            0,
-            gl::RGBA,
-            gl::UNSIGNED_BYTE,
-            pixels.as_mut_ptr() as *mut c_void,
-        );
-    }
-
     let mut vbo: GLuint = 0;
     let mut tile_glyph_buf = TileGlyphBuffer::new();
 
@@ -229,6 +203,32 @@ fn main() -> Result<(), String> {
             }
             gl::VertexAttribDivisor(index, 1);
         }
+    }
+
+    let mut font_texture = 0;
+    let (mut pixels, width, height) = load_img("charmap-oldschool_white.png");
+    unsafe {
+        gl::ActiveTexture(gl::TEXTURE0);
+        gl::GenTextures(1, &mut font_texture);
+        gl::BindTexture(gl::TEXTURE_2D, font_texture);
+
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
+
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32);
+
+        gl::TexImage2D(
+            gl::TEXTURE_2D,
+            0,
+            gl::RGBA as i32,
+            width,
+            height,
+            0,
+            gl::RGBA,
+            gl::UNSIGNED_BYTE,
+            pixels.as_mut_ptr() as *mut c_void,
+        );
     }
 
     let mut editor = if let Some(filepath) = std::env::args().skip(1).next() {
