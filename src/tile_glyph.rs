@@ -1,6 +1,10 @@
-use std::{ffi::c_void, mem::offset_of};
+use std::{
+    ffi::{c_void, CString},
+    mem::offset_of,
+};
 
 use gl::types::GLuint;
+use stb_image::stb_image::stbi_load;
 
 use crate::{editor::Editor, v2, vector::Vector2, Color, BLACK, WHITE};
 
@@ -55,6 +59,35 @@ impl TileGlyph {
             },
         ]
     }
+}
+
+fn load_img(file_path: &str) -> (Vec<u8>, i32, i32) {
+    let c_path = CString::new(file_path).unwrap();
+
+    let mut width = 0;
+    let mut height = 0;
+    let mut channels = 3;
+    let stbi_rgb_alpha = 4;
+
+    let pixels = unsafe {
+        stbi_load(
+            c_path.as_ptr(),
+            &mut width,
+            &mut height,
+            &mut channels,
+            stbi_rgb_alpha,
+        )
+    };
+
+    if pixels.is_null() {
+        panic!("image is null after load");
+    }
+
+    (
+        unsafe { std::slice::from_raw_parts(pixels, (width * height * 4) as usize) }.to_vec(),
+        width,
+        height,
+    )
 }
 
 const TILE_GLYPH_BUFF_CAP: usize = 640 * 1024;
@@ -113,6 +146,33 @@ impl TileGlyphBuffer {
                 }
                 gl::VertexAttribDivisor(index, 1);
             }
+        }
+    }
+    pub fn load_texture_atlas(&self, file_path: &str) {
+        let mut font_texture = 0;
+        let (mut pixels, width, height) = load_img(file_path);
+        unsafe {
+            gl::ActiveTexture(gl::TEXTURE0);
+            gl::GenTextures(1, &mut font_texture);
+            gl::BindTexture(gl::TEXTURE_2D, font_texture);
+
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
+
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32);
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32);
+
+            gl::TexImage2D(
+                gl::TEXTURE_2D,
+                0,
+                gl::RGBA as i32,
+                width,
+                height,
+                0,
+                gl::RGBA,
+                gl::UNSIGNED_BYTE,
+                pixels.as_mut_ptr() as *mut c_void,
+            );
         }
     }
     pub fn render_line(
