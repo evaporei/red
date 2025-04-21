@@ -61,7 +61,7 @@ fn load_img(file_path: &str) -> (Vec<u8>, i32, i32) {
 }
 
 #[repr(C)]
-struct Glyph {
+struct TileGlyph {
     tile: Vector2<i32>,
     ch: i32,
     fg_color: Color,
@@ -76,9 +76,9 @@ struct GlAttrib {
     offset: usize,
 }
 
-impl Glyph {
+impl TileGlyph {
     const fn gl_attributes() -> [GlAttrib; 4] {
-        let stride = size_of::<Glyph>() as i32;
+        let stride = size_of::<TileGlyph>() as i32;
         let normalized = gl::FALSE;
         [
             GlAttrib {
@@ -86,57 +86,57 @@ impl Glyph {
                 comps: 2,
                 normalized,
                 stride,
-                offset: offset_of!(Glyph, tile),
+                offset: offset_of!(TileGlyph, tile),
             },
             GlAttrib {
                 r#type: gl::INT,
                 comps: 1,
                 normalized,
                 stride,
-                offset: offset_of!(Glyph, ch),
+                offset: offset_of!(TileGlyph, ch),
             },
             GlAttrib {
                 r#type: gl::FLOAT,
                 comps: 4,
                 normalized,
                 stride,
-                offset: offset_of!(Glyph, fg_color),
+                offset: offset_of!(TileGlyph, fg_color),
             },
             GlAttrib {
                 r#type: gl::FLOAT,
                 comps: 4,
                 normalized,
                 stride,
-                offset: offset_of!(Glyph, bg_color),
+                offset: offset_of!(TileGlyph, bg_color),
             },
         ]
     }
 }
 
-const GLYPH_BUFF_CAP: usize = 640 * 1024;
-type GlyphBuffer = Vec<Glyph>;
+const TILE_GLYPH_BUFF_CAP: usize = 640 * 1024;
+type TileGlyphBuffer = Vec<TileGlyph>;
 
 fn gl_render_text(
-    glyph_buffer: &mut GlyphBuffer,
+    tile_glyph_buf: &mut TileGlyphBuffer,
     text: &str,
     tile: Vector2<i32>,
     fg_color: Color,
     bg_color: Color,
 ) {
     for (i, ch) in text.chars().enumerate() {
-        let glyph = Glyph {
+        let tile_glyph = TileGlyph {
             tile: tile + v2!(i as i32, 0),
             ch: ch as i32,
             fg_color,
             bg_color,
         };
-        glyph_buffer.push(glyph);
+        tile_glyph_buf.push(tile_glyph);
     }
 }
 
-fn gl_render_cursor(glyph_buffer: &mut GlyphBuffer, editor: &Editor) {
+fn gl_render_cursor(tile_glyph_buf: &mut TileGlyphBuffer, editor: &Editor) {
     gl_render_text(
-        glyph_buffer,
+        tile_glyph_buf,
         &editor.char_at_cursor().unwrap_or(' ').to_string(),
         v2!(editor.cursor.x as i32, -(editor.cursor.y as i32)),
         BLACK,
@@ -144,13 +144,13 @@ fn gl_render_cursor(glyph_buffer: &mut GlyphBuffer, editor: &Editor) {
     );
 }
 
-fn glyph_buffer_sync(glyph_buffer: &GlyphBuffer) {
+fn tile_glyph_buf_sync(tile_glyph_buf: &TileGlyphBuffer) {
     unsafe {
         gl::BufferSubData(
             gl::ARRAY_BUFFER,
             0,
-            (glyph_buffer.len() * size_of::<Glyph>()) as isize,
-            glyph_buffer.as_ptr() as *const c_void,
+            (tile_glyph_buf.len() * size_of::<TileGlyph>()) as isize,
+            tile_glyph_buf.as_ptr() as *const c_void,
         );
     }
 }
@@ -283,20 +283,20 @@ fn main() -> Result<(), String> {
     }
 
     let mut vbo: GLuint = 0;
-    let mut glyph_buffer = Vec::with_capacity(GLYPH_BUFF_CAP);
+    let mut tile_glyph_buf = Vec::with_capacity(TILE_GLYPH_BUFF_CAP);
 
     unsafe {
         gl::GenBuffers(1, &mut vbo);
         gl::BindBuffer(gl::ARRAY_BUFFER, vbo);
         gl::BufferData(
             gl::ARRAY_BUFFER,
-            size_of::<[Glyph; GLYPH_BUFF_CAP]>() as isize,
-            glyph_buffer.as_ptr() as *const std::ffi::c_void,
+            size_of::<[TileGlyph; TILE_GLYPH_BUFF_CAP]>() as isize,
+            tile_glyph_buf.as_ptr() as *const std::ffi::c_void,
             gl::DYNAMIC_DRAW,
         );
     }
 
-    for (i, attrib) in Glyph::gl_attributes().into_iter().enumerate() {
+    for (i, attrib) in TileGlyph::gl_attributes().into_iter().enumerate() {
         let index = i as u32;
         let offset = attrib.offset as *const usize as *const std::ffi::c_void;
         unsafe {
@@ -375,17 +375,17 @@ fn main() -> Result<(), String> {
         camera_vel = (cursor_pos - camera_pos) * v2s!(2.0);
         camera_pos += camera_vel * v2s!(DELTA_TIME);
 
-        glyph_buffer.clear();
+        tile_glyph_buf.clear();
         for (i, line) in editor.lines.iter().enumerate() {
             gl_render_text(
-                &mut glyph_buffer,
+                &mut tile_glyph_buf,
                 &line.chars,
                 v2!(0, -(i as i32)),
                 WHITE,
                 BLACK,
             );
         }
-        glyph_buffer_sync(&glyph_buffer);
+        tile_glyph_buf_sync(&tile_glyph_buf);
 
         unsafe {
             let (width, height) = window.size();
@@ -400,16 +400,16 @@ fn main() -> Result<(), String> {
             gl::Uniform1f(time_uniform, timer.ticks() as f32 / 1000.0);
             gl::Clear(gl::COLOR_BUFFER_BIT);
             gl::ClearColor(0.0, 0.0, 0.0, 1.0);
-            gl::DrawArraysInstanced(gl::TRIANGLE_STRIP, 0, 4, glyph_buffer.len() as i32);
+            gl::DrawArraysInstanced(gl::TRIANGLE_STRIP, 0, 4, tile_glyph_buf.len() as i32);
             // gl_check_errors();
         }
 
-        glyph_buffer.clear();
-        gl_render_cursor(&mut glyph_buffer, &editor);
-        glyph_buffer_sync(&glyph_buffer);
+        tile_glyph_buf.clear();
+        gl_render_cursor(&mut tile_glyph_buf, &editor);
+        tile_glyph_buf_sync(&tile_glyph_buf);
 
         unsafe {
-            gl::DrawArraysInstanced(gl::TRIANGLE_STRIP, 0, 4, glyph_buffer.len() as i32);
+            gl::DrawArraysInstanced(gl::TRIANGLE_STRIP, 0, 4, tile_glyph_buf.len() as i32);
         }
 
         window.gl_swap_window();
