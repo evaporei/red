@@ -6,7 +6,7 @@ use std::{
 use gl::types::{GLint, GLuint};
 use stb_image::stb_image::stbi_load;
 
-use crate::{editor::Editor, v2, vector::Vector2, Color, BLACK, WHITE};
+use crate::{editor::Editor, gl_extra::GlAttrib, v2, vector::Vector2, Color, BLACK, WHITE};
 
 #[repr(C)]
 pub struct TileGlyph {
@@ -16,17 +16,9 @@ pub struct TileGlyph {
     bg_color: Color,
 }
 
-pub struct GlAttrib {
-    pub r#type: gl::types::GLenum,
-    pub comps: i32,
-    pub normalized: gl::types::GLboolean,
-    pub stride: i32,
-    pub offset: usize,
-}
-
 impl TileGlyph {
     pub const fn gl_attributes() -> [GlAttrib; 4] {
-        let stride = size_of::<TileGlyph>() as i32;
+        let stride = size_of::<TileGlyph>() as gl::types::GLsizei;
         let normalized = gl::FALSE;
         [
             GlAttrib {

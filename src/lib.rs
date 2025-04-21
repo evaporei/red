@@ -1,4 +1,5 @@
 pub mod editor;
+pub mod gl_extra;
 pub mod shaders;
 pub mod small_array;
 pub mod tile_glyph;
