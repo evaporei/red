@@ -10,6 +10,8 @@ use red::editor::Editor;
 use red::shaders;
 use red::vector::{Vector2, Vector4};
 
+type Color = Vector4<f32>;
+
 // const SCREEN_WIDTH: u32 = 800;
 // const SCREEN_HEIGHT: u32 = 600;
 const SCREEN_WIDTH: u32 = 1280;
@@ -61,8 +63,8 @@ fn load_img(file_path: &str) -> (Vec<u8>, i32, i32) {
 struct Glyph {
     tile: Vector2<i32>,
     ch: i32,
-    fg_color: Vector4<f32>,
-    bg_color: Vector4<f32>,
+    fg_color: Color,
+    bg_color: Color,
 }
 
 struct GlAttrib {
@@ -117,8 +119,8 @@ fn gl_render_text(
     glyph_buffer: &mut GlyphBuffer,
     text: &str,
     tile: Vector2<i32>,
-    fg_color: Vector4<f32>,
-    bg_color: Vector4<f32>,
+    fg_color: Color,
+    bg_color: Color,
 ) {
     for (i, ch) in text.chars().enumerate() {
         let glyph = Glyph {
@@ -187,8 +189,8 @@ fn gl_check_errors() {
     }
 }
 
-const BLACK: Vector4<f32> = Vector4::from_scalar(0.0);
-const WHITE: Vector4<f32> = Vector4::from_scalar(1.0);
+const BLACK: Color = Vector4::from_scalar(0.0);
+const WHITE: Color = Vector4::from_scalar(1.0);
 
 fn main() -> Result<(), String> {
     let sdl_context = sdl2::init()?;
