@@ -257,6 +257,12 @@ impl TileGlyphBuffer {
             );
         }
     }
+
+    pub fn draw(&self) {
+        unsafe {
+            gl::DrawArraysInstanced(gl::TRIANGLE_STRIP, 0, 4, self.len() as i32);
+        }
+    }
 }
 
 use std::ops::Deref;

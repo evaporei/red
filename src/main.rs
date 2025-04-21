@@ -133,6 +133,22 @@ fn main() -> Result<(), String> {
             }
         }
 
+        unsafe {
+            let (width, height) = window.size();
+            gl::Viewport(0, 0, width as i32, height as i32);
+            gl::Uniform2f(
+                tile_glyph_buf.resolution_uniform,
+                SCREEN_WIDTH as f32,
+                SCREEN_HEIGHT as f32,
+            );
+            gl::Uniform2f(tile_glyph_buf.camera_uniform, camera_pos.x, camera_pos.y);
+
+            gl::Uniform1f(tile_glyph_buf.time_uniform, timer.ticks() as f32 / 1000.0);
+
+            gl::Clear(gl::COLOR_BUFFER_BIT);
+            gl::ClearColor(0.0, 0.0, 0.0, 1.0);
+        }
+
         let cursor_pos = v2!(
             editor.cursor.x as f32 * FONT_CHAR_WIDTH as f32 * FONT_SCALE,
             -(editor.cursor.y as isize) as f32 * FONT_CHAR_HEIGHT as f32 * FONT_SCALE,
@@ -146,31 +162,12 @@ fn main() -> Result<(), String> {
             tile_glyph_buf.render_line(&line.chars, v2!(0, -(i as i32)), WHITE, BLACK);
         }
         tile_glyph_buf.sync();
-
-        unsafe {
-            let (width, height) = window.size();
-            gl::Viewport(0, 0, width as i32, height as i32);
-            gl::Uniform2f(
-                tile_glyph_buf.resolution_uniform,
-                SCREEN_WIDTH as f32,
-                SCREEN_HEIGHT as f32,
-            );
-            gl::Uniform2f(tile_glyph_buf.camera_uniform, camera_pos.x, camera_pos.y);
-
-            gl::Uniform1f(tile_glyph_buf.time_uniform, timer.ticks() as f32 / 1000.0);
-            gl::Clear(gl::COLOR_BUFFER_BIT);
-            gl::ClearColor(0.0, 0.0, 0.0, 1.0);
-            gl::DrawArraysInstanced(gl::TRIANGLE_STRIP, 0, 4, tile_glyph_buf.len() as i32);
-            // gl_check_errors();
-        }
+        tile_glyph_buf.draw();
 
         tile_glyph_buf.clear();
         tile_glyph_buf.gl_render_cursor(&editor);
         tile_glyph_buf.sync();
-
-        unsafe {
-            gl::DrawArraysInstanced(gl::TRIANGLE_STRIP, 0, 4, tile_glyph_buf.len() as i32);
-        }
+        tile_glyph_buf.draw();
 
         window.gl_swap_window();
 
