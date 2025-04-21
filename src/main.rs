@@ -1,6 +1,6 @@
 use gl::types::GLuint;
-use red::tile_glyph;
 use red::tile_glyph::TileGlyph;
+use red::tile_glyph::TileGlyphBuffer;
 use red::tile_glyph::TILE_GLYPH_BUFF_CAP;
 use red::BLACK;
 use red::WHITE;
@@ -187,7 +187,7 @@ fn main() -> Result<(), String> {
     }
 
     let mut vbo: GLuint = 0;
-    let mut tile_glyph_buf = Vec::with_capacity(TILE_GLYPH_BUFF_CAP);
+    let mut tile_glyph_buf = TileGlyphBuffer::new();
 
     unsafe {
         gl::GenBuffers(1, &mut vbo);
@@ -281,15 +281,9 @@ fn main() -> Result<(), String> {
 
         tile_glyph_buf.clear();
         for (i, line) in editor.lines.iter().enumerate() {
-            tile_glyph::render_line(
-                &mut tile_glyph_buf,
-                &line.chars,
-                v2!(0, -(i as i32)),
-                WHITE,
-                BLACK,
-            );
+            tile_glyph_buf.render_line(&line.chars, v2!(0, -(i as i32)), WHITE, BLACK);
         }
-        tile_glyph::sync(&tile_glyph_buf);
+        tile_glyph_buf.sync();
 
         unsafe {
             let (width, height) = window.size();
@@ -309,8 +303,8 @@ fn main() -> Result<(), String> {
         }
 
         tile_glyph_buf.clear();
-        tile_glyph::gl_render_cursor(&mut tile_glyph_buf, &editor);
-        tile_glyph::sync(&tile_glyph_buf);
+        tile_glyph_buf.gl_render_cursor(&editor);
+        tile_glyph_buf.sync();
 
         unsafe {
             gl::DrawArraysInstanced(gl::TRIANGLE_STRIP, 0, 4, tile_glyph_buf.len() as i32);

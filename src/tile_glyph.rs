@@ -56,43 +56,66 @@ impl TileGlyph {
 }
 
 pub const TILE_GLYPH_BUFF_CAP: usize = 640 * 1024;
-type TileGlyphBuffer = Vec<TileGlyph>;
 
-pub fn render_line(
-    tile_glyph_buf: &mut TileGlyphBuffer,
-    line: &str,
-    tile: Vector2<i32>,
-    fg_color: Color,
-    bg_color: Color,
-) {
-    for (i, ch) in line.chars().enumerate() {
-        let tile_glyph = TileGlyph {
-            tile: tile + v2!(i as i32, 0),
-            ch: ch as i32,
-            fg_color,
-            bg_color,
-        };
-        tile_glyph_buf.push(tile_glyph);
+pub struct TileGlyphBuffer(Vec<TileGlyph>);
+
+impl TileGlyphBuffer {
+    pub fn new() -> Self {
+        Self(Vec::with_capacity(TILE_GLYPH_BUFF_CAP))
+    }
+    pub fn render_line(
+        &mut self,
+        line: &str,
+        tile: Vector2<i32>,
+        fg_color: Color,
+        bg_color: Color,
+    ) {
+        for (i, ch) in line.chars().enumerate() {
+            let tile_glyph = TileGlyph {
+                tile: tile + v2!(i as i32, 0),
+                ch: ch as i32,
+                fg_color,
+                bg_color,
+            };
+            self.push(tile_glyph);
+        }
+    }
+
+    pub fn gl_render_cursor(&mut self, editor: &Editor) {
+        self.render_line(
+            &editor.char_at_cursor().unwrap_or(' ').to_string(),
+            v2!(editor.cursor.x as i32, -(editor.cursor.y as i32)),
+            BLACK,
+            WHITE,
+        );
+    }
+
+    pub fn sync(&self) {
+        unsafe {
+            gl::BufferSubData(
+                gl::ARRAY_BUFFER,
+                0,
+                (self.len() * size_of::<TileGlyph>()) as isize,
+                self.as_ptr() as *const c_void,
+            );
+        }
     }
 }
 
-pub fn gl_render_cursor(tile_glyph_buf: &mut TileGlyphBuffer, editor: &Editor) {
-    render_line(
-        tile_glyph_buf,
-        &editor.char_at_cursor().unwrap_or(' ').to_string(),
-        v2!(editor.cursor.x as i32, -(editor.cursor.y as i32)),
-        BLACK,
-        WHITE,
-    );
+use std::ops::Deref;
+
+impl Deref for TileGlyphBuffer {
+    type Target = Vec<TileGlyph>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }
 
-pub fn sync(tile_glyph_buf: &TileGlyphBuffer) {
-    unsafe {
-        gl::BufferSubData(
-            gl::ARRAY_BUFFER,
-            0,
-            (tile_glyph_buf.len() * size_of::<TileGlyph>()) as isize,
-            tile_glyph_buf.as_ptr() as *const c_void,
-        );
+use std::ops::DerefMut;
+
+impl DerefMut for TileGlyphBuffer {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
