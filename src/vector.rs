@@ -124,14 +124,14 @@ impl<T: Copy + Clone> Vector4<T> {
 #[macro_export]
 macro_rules! v4 {
     ($x:expr, $y:expr, $z:expr, $w:expr $(,)*) => {
-        self::vector::Vector4::new($x, $y, $z, $w)
+        self::Vector4::new($x, $y, $z, $w)
     };
 }
 
 #[macro_export]
 macro_rules! v4s {
     ($s:expr $(,)*) => {
-        self::vector::Vector4::from_scalar($s)
+        self::Vector4::from_scalar($s)
     };
 }
 

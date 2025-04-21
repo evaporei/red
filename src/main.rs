@@ -91,7 +91,7 @@ fn main() -> Result<(), String> {
 
     tile_glyph_buf.gl_init();
     tile_glyph_buf.load_texture_atlas("charmap-oldschool_white.png");
-    tile_glyph_buf.compile_shaders("shaders/font.vert", "shaders/font.frag")?;
+    tile_glyph_buf.compile_shaders("shaders/tile_glyph.vert", "shaders/tile_glyph.frag")?;
 
     let mut editor = if let Some(filepath) = std::env::args().skip(1).next() {
         Editor::from_filepath(filepath).map_err(|e| e.to_string())?
@@ -133,6 +133,14 @@ fn main() -> Result<(), String> {
             }
         }
 
+        let cursor_pos = v2!(
+            editor.cursor.x as f32 * FONT_CHAR_WIDTH as f32 * FONT_SCALE,
+            -(editor.cursor.y as isize) as f32 * FONT_CHAR_HEIGHT as f32 * FONT_SCALE,
+        );
+
+        camera_vel = (cursor_pos - camera_pos) * v2s!(2.0);
+        camera_pos += camera_vel * v2s!(DELTA_TIME);
+
         unsafe {
             let (width, height) = window.size();
             gl::Viewport(0, 0, width as i32, height as i32);
@@ -148,14 +156,6 @@ fn main() -> Result<(), String> {
             gl::Clear(gl::COLOR_BUFFER_BIT);
             gl::ClearColor(0.0, 0.0, 0.0, 1.0);
         }
-
-        let cursor_pos = v2!(
-            editor.cursor.x as f32 * FONT_CHAR_WIDTH as f32 * FONT_SCALE,
-            -(editor.cursor.y as isize) as f32 * FONT_CHAR_HEIGHT as f32 * FONT_SCALE,
-        );
-
-        camera_vel = (cursor_pos - camera_pos) * v2s!(2.0);
-        camera_pos += camera_vel * v2s!(DELTA_TIME);
 
         tile_glyph_buf.clear();
         for (i, line) in editor.lines.iter().enumerate() {
