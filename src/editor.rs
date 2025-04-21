@@ -1,3 +1,4 @@
+use crate::v2s;
 use crate::vector::Vector2;
 
 #[derive(Default)]
@@ -35,7 +36,7 @@ impl Editor {
         Self {
             filepath: None,
             lines: vec![Line::default()],
-            cursor: Vector2::new(0, 0),
+            cursor: v2s!(0),
         }
     }
     pub fn from_filepath(filepath: String) -> std::io::Result<Self> {

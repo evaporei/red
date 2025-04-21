@@ -9,6 +9,7 @@ use std::mem::offset_of;
 use red::editor::Editor;
 use red::shaders;
 use red::vector::{Vector2, Vector4};
+use red::{v2, v2s, v4s};
 
 type Color = Vector4<f32>;
 
@@ -124,7 +125,7 @@ fn gl_render_text(
 ) {
     for (i, ch) in text.chars().enumerate() {
         let glyph = Glyph {
-            tile: tile + Vector2::new(i as i32, 0),
+            tile: tile + v2!(i as i32, 0),
             ch: ch as i32,
             fg_color,
             bg_color,
@@ -137,7 +138,7 @@ fn gl_render_cursor(glyph_buffer: &mut GlyphBuffer, editor: &Editor) {
     gl_render_text(
         glyph_buffer,
         &editor.char_at_cursor().unwrap_or(' ').to_string(),
-        Vector2::new(editor.cursor.x as i32, -(editor.cursor.y as i32)),
+        v2!(editor.cursor.x as i32, -(editor.cursor.y as i32)),
         BLACK,
         WHITE,
     );
@@ -189,8 +190,8 @@ fn gl_check_errors() {
     }
 }
 
-const BLACK: Color = Vector4::from_scalar(0.0);
-const WHITE: Color = Vector4::from_scalar(1.0);
+const BLACK: Color = v4s!(0.0);
+const WHITE: Color = v4s!(1.0);
 
 fn main() -> Result<(), String> {
     let sdl_context = sdl2::init()?;
@@ -334,7 +335,7 @@ fn main() -> Result<(), String> {
 
     let timer = sdl_context.timer()?;
 
-    let mut camera_pos = Vector2::new(0.0, 0.0);
+    let mut camera_pos = v2s!(0.0);
     let mut camera_vel;
 
     let mut event_pump = sdl_context.event_pump()?;
@@ -366,20 +367,20 @@ fn main() -> Result<(), String> {
             }
         }
 
-        let cursor_pos = Vector2::new(
+        let cursor_pos = v2!(
             editor.cursor.x as f32 * FONT_CHAR_WIDTH as f32 * FONT_SCALE,
             -(editor.cursor.y as isize) as f32 * FONT_CHAR_HEIGHT as f32 * FONT_SCALE,
         );
 
-        camera_vel = (cursor_pos - camera_pos) * Vector2::from_scalar(2.0);
-        camera_pos += camera_vel * Vector2::from_scalar(DELTA_TIME);
+        camera_vel = (cursor_pos - camera_pos) * v2s!(2.0);
+        camera_pos += camera_vel * v2s!(DELTA_TIME);
 
         glyph_buffer.clear();
         for (i, line) in editor.lines.iter().enumerate() {
             gl_render_text(
                 &mut glyph_buffer,
                 &line.chars,
-                Vector2::new(0, -(i as i32)),
+                v2!(0, -(i as i32)),
                 WHITE,
                 BLACK,
             );

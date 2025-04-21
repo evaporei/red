@@ -14,6 +14,20 @@ impl<T: Copy + Clone> Vector2<T> {
     }
 }
 
+#[macro_export]
+macro_rules! v2 {
+    ($x:expr, $y:expr $(,)*) => {
+        Vector2::new($x, $y)
+    };
+}
+
+#[macro_export]
+macro_rules! v2s {
+    ($s:expr $(,)*) => {
+        Vector2::from_scalar($s)
+    };
+}
+
 use std::ops;
 
 impl<T: ops::Add<Output = T>> ops::Add<Vector2<T>> for Vector2<T> {
@@ -105,6 +119,20 @@ impl<T: Copy + Clone> Vector4<T> {
             w: s,
         }
     }
+}
+
+#[macro_export]
+macro_rules! v4 {
+    ($x:expr, $y:expr, $z:expr, $w:expr $(,)*) => {
+        Vector4::new($x, $y, $z, $w)
+    };
+}
+
+#[macro_export]
+macro_rules! v4s {
+    ($s:expr $(,)*) => {
+        Vector4::from_scalar($s)
+    };
 }
 
 impl<T: ops::Add<Output = T>> ops::Add<Vector4<T>> for Vector4<T> {
