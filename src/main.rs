@@ -1,17 +1,12 @@
-use gl::types::GLuint;
+use red::tile_glyph::TileGlyphBuffer;
+use red::BLACK;
+use red::WHITE;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
-use stb_image::stb_image::stbi_load;
-use std::ffi::c_void;
-use std::ffi::CString;
-use std::mem::offset_of;
 
 use red::editor::Editor;
-use red::shaders;
-use red::vector::{Vector2, Vector4};
-use red::{v2, v2s, v4s};
-
-type Color = Vector4<f32>;
+use red::vector::Vector2;
+use red::{v2, v2s};
 
 // const SCREEN_WIDTH: u32 = 800;
 // const SCREEN_HEIGHT: u32 = 600;
@@ -30,130 +25,6 @@ const FONT_ROWS: usize = 7;
 
 const FONT_CHAR_WIDTH: usize = FONT_WIDTH / FONT_COLS;
 const FONT_CHAR_HEIGHT: usize = FONT_HEIGHT / FONT_ROWS;
-
-fn load_img(file_path: &str) -> (Vec<u8>, i32, i32) {
-    let c_path = CString::new(file_path).unwrap();
-
-    let mut width = 0;
-    let mut height = 0;
-    let mut channels = 3;
-    let stbi_rgb_alpha = 4;
-
-    let pixels = unsafe {
-        stbi_load(
-            c_path.as_ptr(),
-            &mut width,
-            &mut height,
-            &mut channels,
-            stbi_rgb_alpha,
-        )
-    };
-
-    if pixels.is_null() {
-        panic!("image is null after load");
-    }
-
-    (
-        unsafe { std::slice::from_raw_parts(pixels, (width * height * 4) as usize) }.to_vec(),
-        width,
-        height,
-    )
-}
-
-#[repr(C)]
-struct Glyph {
-    tile: Vector2<i32>,
-    ch: i32,
-    fg_color: Color,
-    bg_color: Color,
-}
-
-struct GlAttrib {
-    r#type: gl::types::GLenum,
-    comps: i32,
-    normalized: gl::types::GLboolean,
-    stride: i32,
-    offset: usize,
-}
-
-impl Glyph {
-    const fn gl_attributes() -> [GlAttrib; 4] {
-        let stride = size_of::<Glyph>() as i32;
-        let normalized = gl::FALSE;
-        [
-            GlAttrib {
-                r#type: gl::INT,
-                comps: 2,
-                normalized,
-                stride,
-                offset: offset_of!(Glyph, tile),
-            },
-            GlAttrib {
-                r#type: gl::INT,
-                comps: 1,
-                normalized,
-                stride,
-                offset: offset_of!(Glyph, ch),
-            },
-            GlAttrib {
-                r#type: gl::FLOAT,
-                comps: 4,
-                normalized,
-                stride,
-                offset: offset_of!(Glyph, fg_color),
-            },
-            GlAttrib {
-                r#type: gl::FLOAT,
-                comps: 4,
-                normalized,
-                stride,
-                offset: offset_of!(Glyph, bg_color),
-            },
-        ]
-    }
-}
-
-const GLYPH_BUFF_CAP: usize = 640 * 1024;
-type GlyphBuffer = Vec<Glyph>;
-
-fn gl_render_text(
-    glyph_buffer: &mut GlyphBuffer,
-    text: &str,
-    tile: Vector2<i32>,
-    fg_color: Color,
-    bg_color: Color,
-) {
-    for (i, ch) in text.chars().enumerate() {
-        let glyph = Glyph {
-            tile: tile + v2!(i as i32, 0),
-            ch: ch as i32,
-            fg_color,
-            bg_color,
-        };
-        glyph_buffer.push(glyph);
-    }
-}
-
-fn gl_render_cursor(glyph_buffer: &mut GlyphBuffer, editor: &Editor) {
-    gl_render_text(
-        glyph_buffer,
-        &editor.char_at_cursor().unwrap_or(' ').to_string(),
-        v2!(editor.cursor.x as i32, -(editor.cursor.y as i32)),
-        BLACK,
-        WHITE,
-    );
-}
-
-fn glyph_buffer_sync(glyph_buffer: &GlyphBuffer) {
-    unsafe {
-        gl::BufferSubData(
-            gl::ARRAY_BUFFER,
-            0,
-            (glyph_buffer.len() * size_of::<Glyph>()) as isize,
-            glyph_buffer.as_ptr() as *const c_void,
-        );
-    }
-}
 
 #[allow(unused)]
 fn gl_check_errors() {
@@ -190,9 +61,6 @@ fn gl_check_errors() {
     }
 }
 
-const BLACK: Color = v4s!(0.0);
-const WHITE: Color = v4s!(1.0);
-
 fn main() -> Result<(), String> {
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
@@ -219,113 +87,11 @@ fn main() -> Result<(), String> {
         gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
     }
 
-    let mut vao: GLuint = 0;
-    unsafe {
-        gl::GenVertexArrays(1, &mut vao);
-        gl::BindVertexArray(vao);
-    }
+    let mut tile_glyph_buf = TileGlyphBuffer::new();
 
-    let program = shaders::load("shaders/font.vert", "shaders/font.frag")?;
-    unsafe {
-        gl::UseProgram(program);
-    }
-
-    let time_uniform;
-    let resolution_uniform;
-    let camera_uniform;
-    unsafe {
-        time_uniform = gl::GetUniformLocation(program, c"time".as_ptr());
-        if time_uniform == -1 {
-            eprintln!("time uniform not found");
-        }
-
-        resolution_uniform = gl::GetUniformLocation(program, c"resolution".as_ptr());
-        if resolution_uniform == -1 {
-            eprintln!("resolution uniform not found");
-        }
-
-        let scale_uniform = gl::GetUniformLocation(program, c"scale".as_ptr());
-        if scale_uniform == -1 {
-            eprintln!("scale uniform not found");
-        }
-        gl::Uniform1f(scale_uniform, FONT_SCALE);
-
-        camera_uniform = gl::GetUniformLocation(program, c"camera".as_ptr());
-        if camera_uniform == -1 {
-            eprintln!("camera uniform not found");
-        }
-    };
-
-    let mut font_texture = 0;
-    let (mut pixels, width, height) = load_img("charmap-oldschool_white.png");
-    unsafe {
-        gl::ActiveTexture(gl::TEXTURE0);
-        gl::GenTextures(1, &mut font_texture);
-        gl::BindTexture(gl::TEXTURE_2D, font_texture);
-
-        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
-        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
-
-        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32);
-        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32);
-
-        gl::TexImage2D(
-            gl::TEXTURE_2D,
-            0,
-            gl::RGBA as i32,
-            width,
-            height,
-            0,
-            gl::RGBA,
-            gl::UNSIGNED_BYTE,
-            pixels.as_mut_ptr() as *mut c_void,
-        );
-    }
-
-    let mut vbo: GLuint = 0;
-    let mut glyph_buffer = Vec::with_capacity(GLYPH_BUFF_CAP);
-
-    unsafe {
-        gl::GenBuffers(1, &mut vbo);
-        gl::BindBuffer(gl::ARRAY_BUFFER, vbo);
-        gl::BufferData(
-            gl::ARRAY_BUFFER,
-            size_of::<[Glyph; GLYPH_BUFF_CAP]>() as isize,
-            glyph_buffer.as_ptr() as *const std::ffi::c_void,
-            gl::DYNAMIC_DRAW,
-        );
-    }
-
-    for (i, attrib) in Glyph::gl_attributes().into_iter().enumerate() {
-        let index = i as u32;
-        let offset = attrib.offset as *const usize as *const std::ffi::c_void;
-        unsafe {
-            gl::EnableVertexAttribArray(index);
-            match attrib.r#type {
-                gl::FLOAT => {
-                    gl::VertexAttribPointer(
-                        index,
-                        attrib.comps,
-                        attrib.r#type,
-                        attrib.normalized,
-                        attrib.stride,
-                        offset,
-                    );
-                }
-                gl::INT => {
-                    gl::VertexAttribIPointer(
-                        index,
-                        attrib.comps,
-                        attrib.r#type,
-                        attrib.stride,
-                        offset,
-                    );
-                }
-                _ => unimplemented!("handle new gl attribute type"),
-            }
-            gl::VertexAttribDivisor(index, 1);
-        }
-    }
+    tile_glyph_buf.gl_init();
+    tile_glyph_buf.load_texture_atlas("charmap-oldschool_white.png");
+    tile_glyph_buf.compile_shaders("shaders/font.vert", "shaders/font.frag")?;
 
     let mut editor = if let Some(filepath) = std::env::args().skip(1).next() {
         Editor::from_filepath(filepath).map_err(|e| e.to_string())?
@@ -367,6 +133,22 @@ fn main() -> Result<(), String> {
             }
         }
 
+        unsafe {
+            let (width, height) = window.size();
+            gl::Viewport(0, 0, width as i32, height as i32);
+            gl::Uniform2f(
+                tile_glyph_buf.resolution_uniform,
+                SCREEN_WIDTH as f32,
+                SCREEN_HEIGHT as f32,
+            );
+            gl::Uniform2f(tile_glyph_buf.camera_uniform, camera_pos.x, camera_pos.y);
+
+            gl::Uniform1f(tile_glyph_buf.time_uniform, timer.ticks() as f32 / 1000.0);
+
+            gl::Clear(gl::COLOR_BUFFER_BIT);
+            gl::ClearColor(0.0, 0.0, 0.0, 1.0);
+        }
+
         let cursor_pos = v2!(
             editor.cursor.x as f32 * FONT_CHAR_WIDTH as f32 * FONT_SCALE,
             -(editor.cursor.y as isize) as f32 * FONT_CHAR_HEIGHT as f32 * FONT_SCALE,
@@ -375,42 +157,17 @@ fn main() -> Result<(), String> {
         camera_vel = (cursor_pos - camera_pos) * v2s!(2.0);
         camera_pos += camera_vel * v2s!(DELTA_TIME);
 
-        glyph_buffer.clear();
+        tile_glyph_buf.clear();
         for (i, line) in editor.lines.iter().enumerate() {
-            gl_render_text(
-                &mut glyph_buffer,
-                &line.chars,
-                v2!(0, -(i as i32)),
-                WHITE,
-                BLACK,
-            );
+            tile_glyph_buf.render_line(&line.chars, v2!(0, -(i as i32)), WHITE, BLACK);
         }
-        glyph_buffer_sync(&glyph_buffer);
+        tile_glyph_buf.sync();
+        tile_glyph_buf.draw();
 
-        unsafe {
-            let (width, height) = window.size();
-            gl::Viewport(0, 0, width as i32, height as i32);
-            gl::Uniform2f(
-                resolution_uniform,
-                SCREEN_WIDTH as f32,
-                SCREEN_HEIGHT as f32,
-            );
-            gl::Uniform2f(camera_uniform, camera_pos.x, camera_pos.y);
-
-            gl::Uniform1f(time_uniform, timer.ticks() as f32 / 1000.0);
-            gl::Clear(gl::COLOR_BUFFER_BIT);
-            gl::ClearColor(0.0, 0.0, 0.0, 1.0);
-            gl::DrawArraysInstanced(gl::TRIANGLE_STRIP, 0, 4, glyph_buffer.len() as i32);
-            // gl_check_errors();
-        }
-
-        glyph_buffer.clear();
-        gl_render_cursor(&mut glyph_buffer, &editor);
-        glyph_buffer_sync(&glyph_buffer);
-
-        unsafe {
-            gl::DrawArraysInstanced(gl::TRIANGLE_STRIP, 0, 4, glyph_buffer.len() as i32);
-        }
+        tile_glyph_buf.clear();
+        tile_glyph_buf.gl_render_cursor(&editor);
+        tile_glyph_buf.sync();
+        tile_glyph_buf.draw();
 
         window.gl_swap_window();
 
