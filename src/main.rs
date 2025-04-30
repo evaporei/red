@@ -122,10 +122,20 @@ fn main() -> Result<(), String> {
             gl::ClearColor(0.0, 0.0, 0.0, 1.0);
         }
 
+        let lines_per_screen = SCREEN_HEIGHT as f32 / (FONT_CHAR_HEIGHT as f32 * FONT_SCALE);
+        let start_idx = (editor.cursor.y)
+            .checked_sub(lines_per_screen as usize)
+            .unwrap_or(0);
+        let end_idx = std::cmp::min(
+            start_idx + (lines_per_screen * 2.0) as usize,
+            editor.lines.len(),
+        );
+
         tile_glyph_buf.clear();
-        for (i, line) in editor.lines.iter().enumerate() {
-            tile_glyph_buf.render_line(&line.chars, v2!(0, -(i as i32)), WHITE, BLACK);
+        for i in start_idx..end_idx {
+            tile_glyph_buf.render_line(&editor.lines[i].chars, v2!(0, -(i as i32)), WHITE, BLACK);
         }
+
         tile_glyph_buf.gl_render_cursor(&editor);
         tile_glyph_buf.sync();
         tile_glyph_buf.draw();
