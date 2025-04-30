@@ -4,7 +4,7 @@ use red::WHITE;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 
-use red::editor::Editor;
+use red::buffer::Buffer;
 use red::vector::Vector2;
 use red::{v2, v2s};
 
@@ -58,10 +58,10 @@ fn main() -> Result<(), String> {
     glyph_buf.load_texture_atlas("charmap-oldschool_white.png");
     glyph_buf.compile_shaders("shaders/tile_glyph.vert", "shaders/tile_glyph.frag")?;
 
-    let mut editor = if let Some(filepath) = std::env::args().skip(1).next() {
-        Editor::from_filepath(filepath).map_err(|e| e.to_string())?
+    let mut buffer = if let Some(filepath) = std::env::args().skip(1).next() {
+        Buffer::from_filepath(filepath).map_err(|e| e.to_string())?
     } else {
-        Editor::new()
+        Buffer::new()
     };
 
     let timer = sdl_context.timer()?;
@@ -78,29 +78,29 @@ fn main() -> Result<(), String> {
                 Event::Quit { .. } => quit = true,
                 Event::KeyDown { keycode, .. } => match keycode {
                     Some(key) => match key {
-                        Keycode::F2 => match editor.save() {
+                        Keycode::F2 => match buffer.save() {
                             Ok(_) => println!("saved file!"),
                             Err(err) => eprintln!("{}", err),
                         },
-                        Keycode::Backspace => editor.backspace(),
-                        Keycode::Delete => editor.delete(),
-                        Keycode::Left => editor.move_left(),
-                        Keycode::Right => editor.move_right(),
-                        Keycode::Up => editor.move_up(),
-                        Keycode::Down => editor.move_down(),
-                        Keycode::Return => editor.newline(),
+                        Keycode::Backspace => buffer.backspace(),
+                        Keycode::Delete => buffer.delete(),
+                        Keycode::Left => buffer.move_left(),
+                        Keycode::Right => buffer.move_right(),
+                        Keycode::Up => buffer.move_up(),
+                        Keycode::Down => buffer.move_down(),
+                        Keycode::Return => buffer.newline(),
                         _ => {}
                     },
                     _ => {}
                 },
-                Event::TextInput { text, .. } => editor.insert_text(&text),
+                Event::TextInput { text, .. } => buffer.insert_text(&text),
                 _ => {}
             }
         }
 
         let cursor_pos = v2!(
-            editor.cursor.x as f32 * FONT_CHAR_WIDTH as f32 * FONT_SCALE,
-            -(editor.cursor.y as isize) as f32 * FONT_CHAR_HEIGHT as f32 * FONT_SCALE,
+            buffer.cursor.x as f32 * FONT_CHAR_WIDTH as f32 * FONT_SCALE,
+            -(buffer.cursor.y as isize) as f32 * FONT_CHAR_HEIGHT as f32 * FONT_SCALE,
         );
 
         camera_vel = (cursor_pos - camera_pos) * v2s!(2.0);
@@ -123,20 +123,20 @@ fn main() -> Result<(), String> {
         }
 
         let lines_per_screen = SCREEN_HEIGHT as f32 / (FONT_CHAR_HEIGHT as f32 * FONT_SCALE);
-        let start_idx = (editor.cursor.y)
+        let start_idx = (buffer.cursor.y)
             .checked_sub(lines_per_screen as usize)
             .unwrap_or(0);
         let end_idx = std::cmp::min(
             start_idx + (lines_per_screen * 2.0) as usize,
-            editor.lines.len(),
+            buffer.lines.len(),
         );
 
         glyph_buf.clear();
         for i in start_idx..end_idx {
-            glyph_buf.render_line(&editor.lines[i].chars, v2!(0, -(i as i32)), WHITE, BLACK);
+            glyph_buf.render_line(&buffer.lines[i].chars, v2!(0, -(i as i32)), WHITE, BLACK);
         }
 
-        glyph_buf.gl_render_cursor(&editor);
+        glyph_buf.gl_render_cursor(&buffer);
         glyph_buf.sync();
         glyph_buf.draw();
 

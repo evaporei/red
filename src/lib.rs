@@ -1,4 +1,4 @@
-pub mod editor;
+pub mod buffer;
 pub mod gl_extra;
 pub mod image;
 pub mod shaders;

@@ -18,7 +18,7 @@ impl Line {
 }
 
 #[derive(Default)]
-pub struct Editor {
+pub struct Buffer {
     filepath: Option<PathBuf>,
     pub lines: Vec<Line>,
     pub cursor: Vector2<usize>,
@@ -31,7 +31,7 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-impl Editor {
+impl Buffer {
     pub fn new() -> Self {
         Self {
             filepath: None,
@@ -51,19 +51,19 @@ impl Editor {
                 });
             }
         };
-        let mut editor = Self::default();
+        let mut buffer = Self::default();
         for line in io::BufReader::new(file).lines() {
             let mut chars = line?;
             if chars.ends_with('\n') {
                 chars.pop();
             }
-            editor.lines.push(Line { chars });
+            buffer.lines.push(Line { chars });
         }
-        if editor.lines.is_empty() {
-            editor.lines.push(Line::default());
+        if buffer.lines.is_empty() {
+            buffer.lines.push(Line::default());
         }
-        editor.filepath = Some(filepath);
-        Ok(editor)
+        buffer.filepath = Some(filepath);
+        Ok(buffer)
     }
     pub fn save(&self) -> std::io::Result<()> {
         let mut file = std::fs::File::options()

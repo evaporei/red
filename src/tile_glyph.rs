@@ -3,7 +3,7 @@ use std::{ffi::c_void, mem::offset_of};
 use gl::types::{GLint, GLuint};
 
 use crate::{
-    editor::Editor, gl_extra::GlAttrib, image::Image, v2, vector::Vector2, Color, BLACK, WHITE,
+    buffer::Buffer, gl_extra::GlAttrib, image::Image, v2, vector::Vector2, Color, BLACK, WHITE,
 };
 
 #[repr(C)]
@@ -203,10 +203,10 @@ impl TileGlyphBuffer {
         }
     }
 
-    pub fn gl_render_cursor(&mut self, editor: &Editor) {
+    pub fn gl_render_cursor(&mut self, buffer: &Buffer) {
         self.render_line(
-            &editor.char_at_cursor().unwrap_or(' ').to_string(),
-            v2!(editor.cursor.x as i32, -(editor.cursor.y as i32)),
+            &buffer.char_at_cursor().unwrap_or(' ').to_string(),
+            v2!(buffer.cursor.x as i32, -(buffer.cursor.y as i32)),
             BLACK,
             WHITE,
         );
