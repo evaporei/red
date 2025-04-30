@@ -126,10 +126,6 @@ fn main() -> Result<(), String> {
         for (i, line) in editor.lines.iter().enumerate() {
             tile_glyph_buf.render_line(&line.chars, v2!(0, -(i as i32)), WHITE, BLACK);
         }
-        tile_glyph_buf.sync();
-        tile_glyph_buf.draw();
-
-        tile_glyph_buf.clear();
         tile_glyph_buf.gl_render_cursor(&editor);
         tile_glyph_buf.sync();
         tile_glyph_buf.draw();
