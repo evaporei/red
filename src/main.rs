@@ -52,11 +52,11 @@ fn main() -> Result<(), String> {
         gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
     }
 
-    let mut tile_glyph_buf = TileGlyphBuffer::new();
+    let mut glyph_buf = TileGlyphBuffer::new();
 
-    tile_glyph_buf.gl_init();
-    tile_glyph_buf.load_texture_atlas("charmap-oldschool_white.png");
-    tile_glyph_buf.compile_shaders("shaders/tile_glyph.vert", "shaders/tile_glyph.frag")?;
+    glyph_buf.gl_init();
+    glyph_buf.load_texture_atlas("charmap-oldschool_white.png");
+    glyph_buf.compile_shaders("shaders/tile_glyph.vert", "shaders/tile_glyph.frag")?;
 
     let mut editor = if let Some(filepath) = std::env::args().skip(1).next() {
         Editor::from_filepath(filepath).map_err(|e| e.to_string())?
@@ -110,13 +110,13 @@ fn main() -> Result<(), String> {
             let (width, height) = window.size();
             gl::Viewport(0, 0, width as i32, height as i32);
             gl::Uniform2f(
-                tile_glyph_buf.resolution_uniform,
+                glyph_buf.resolution_uniform,
                 SCREEN_WIDTH as f32,
                 SCREEN_HEIGHT as f32,
             );
-            gl::Uniform2f(tile_glyph_buf.camera_uniform, camera_pos.x, camera_pos.y);
+            gl::Uniform2f(glyph_buf.camera_uniform, camera_pos.x, camera_pos.y);
 
-            gl::Uniform1f(tile_glyph_buf.time_uniform, timer.ticks() as f32 / 1000.0);
+            gl::Uniform1f(glyph_buf.time_uniform, timer.ticks() as f32 / 1000.0);
 
             gl::Clear(gl::COLOR_BUFFER_BIT);
             gl::ClearColor(0.0, 0.0, 0.0, 1.0);
@@ -131,14 +131,14 @@ fn main() -> Result<(), String> {
             editor.lines.len(),
         );
 
-        tile_glyph_buf.clear();
+        glyph_buf.clear();
         for i in start_idx..end_idx {
-            tile_glyph_buf.render_line(&editor.lines[i].chars, v2!(0, -(i as i32)), WHITE, BLACK);
+            glyph_buf.render_line(&editor.lines[i].chars, v2!(0, -(i as i32)), WHITE, BLACK);
         }
 
-        tile_glyph_buf.gl_render_cursor(&editor);
-        tile_glyph_buf.sync();
-        tile_glyph_buf.draw();
+        glyph_buf.gl_render_cursor(&editor);
+        glyph_buf.sync();
+        glyph_buf.draw();
 
         window.gl_swap_window();
 
