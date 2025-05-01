@@ -138,3 +138,145 @@ impl Buffer {
         self.lines[self.cursor.y].chars.chars().nth(self.cursor.x)
     }
 }
+
+pub struct Gap {
+    pub(crate) buf: Vec<u8>,
+    pub(crate) len: usize,
+    pub(crate) start: usize,
+    pub(crate) end: usize,
+}
+
+impl Gap {
+    pub fn new(cap: usize) -> Self {
+        Self {
+            buf: vec![0; cap],
+            len: 0,
+            start: 0,
+            end: cap,
+        }
+    }
+    pub fn shift_gap_to(&mut self, cursor: usize) {
+        let gap_len = self.end - self.start;
+        let cursor = std::cmp::min(cursor, self.buf.capacity() - gap_len);
+        if self.start == cursor {
+            return;
+        }
+        let ptr = self.buf.as_mut_ptr();
+        if self.start < cursor {
+            let delta = cursor - self.start;
+            for i in 0..delta {
+                unsafe {
+                    *ptr.add(self.start + i) = self.buf[self.end + i];
+                }
+            }
+            self.start += delta;
+            self.end += delta;
+        } else {
+            let delta = self.start - cursor;
+            for i in 0..delta {
+                unsafe {
+                    *ptr.add(self.end - delta + i) = self.buf[self.start - delta + i];
+                }
+            }
+            self.start -= delta;
+            self.end -= delta;
+        }
+    }
+
+    pub fn grow(&mut self, n_required: usize) {
+        let gap_len = self.end - self.start;
+        if gap_len >= n_required {
+            return;
+        }
+        self.shift_gap_to(self.buf.capacity() - gap_len);
+        let new_cap = 2 * (n_required + self.buf.capacity() + gap_len);
+        let mut data = Vec::with_capacity(new_cap);
+        data.extend_from_slice(&self.buf);
+        self.buf = data;
+        self.end = self.buf.len();
+    }
+
+    pub fn insert_char(&mut self, at: usize, ch: char) {
+        self.grow(1);
+        self.shift_gap_to(at);
+        let mut tmp: [u8; 4] = [0; 4];
+        let s = ch.encode_utf8(&mut tmp);
+        let s_bytes = s.as_bytes();
+
+        let ptr = self.buf.as_mut_ptr();
+        for (i, t) in s_bytes.iter().enumerate() {
+            unsafe {
+                *ptr.add(self.start + i) = *t;
+            }
+            self.len += 1;
+        }
+        self.start += s_bytes.len();
+    }
+
+    pub fn insert_str(&mut self, at: usize, s: &str) {
+        self.grow(1);
+        self.shift_gap_to(at);
+        let ptr = self.buf.as_mut_ptr();
+        let s_bytes = s.as_bytes();
+        for (i, b) in s_bytes.iter().enumerate() {
+            unsafe {
+                *ptr.add(self.start + i) = *b;
+            }
+            self.len += 1;
+        }
+        self.start += s_bytes.len();
+    }
+
+    pub fn to_str(&self) -> (&str, &str) {
+        if self.len == 0 {
+            return ("", "");
+        }
+        if self.start == 0 {
+            return ("", unsafe {
+                std::str::from_utf8_unchecked(&self.buf[self.end..])
+            });
+        }
+        if self.end == self.buf.capacity() {
+            return (
+                unsafe { std::str::from_utf8_unchecked(&self.buf[..self.start]) },
+                "",
+            );
+        }
+        (
+            unsafe { std::str::from_utf8_unchecked(&self.buf[..self.start]) },
+            unsafe { std::str::from_utf8_unchecked(&self.buf[self.end..]) },
+        )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_gap() {
+        let mut g = Gap::new(16);
+        assert_eq!(g.to_str(), ("", ""));
+        assert_eq!(g.len, 0);
+        assert_eq!(g.buf.capacity(), 16);
+        assert_eq!(g.start, 0);
+        assert_eq!(g.end, 16);
+        g.insert_char(0, 'a');
+        assert_eq!(g.len, 1);
+        assert_eq!(g.buf.capacity(), 16);
+        assert_eq!(g.start, 1);
+        assert_eq!(g.end, 16);
+        g.insert_str(1, "bcd");
+        assert_eq!(g.len, 4);
+        assert_eq!(g.buf.capacity(), 16);
+        assert_eq!(g.start, 4);
+        assert_eq!(g.end, 16);
+        assert_eq!(g.to_str(), ("abcd", ""));
+        g.shift_gap_to(0);
+        assert_eq!(g.start, 0);
+        assert_eq!(g.end, 12);
+        g.insert_str(0, "xyz");
+        // dbg!(&g.buf);
+        assert_eq!(g.to_str(), ("xyz", "abcd"));
+    }
+}
