@@ -216,6 +216,8 @@ impl Gap {
         self.start += s_bytes.len();
     }
 
+    // Safe because we only insert `char` and `&str`
+    // which are both guaranteed to be utf8.
     pub fn to_str(&self) -> (&str, &str) {
         if self.len == 0 {
             return ("", "");
