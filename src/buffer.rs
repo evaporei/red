@@ -28,8 +28,11 @@ use std::fs::File;
 use std::io;
 use std::io::BufRead;
 use std::io::Write;
+use std::iter::Chain;
 use std::path::PathBuf;
+use std::str::Chars;
 use std::str::FromStr;
+use std::str::Lines;
 
 impl Buffer {
     pub fn new() -> Self {
@@ -222,6 +225,12 @@ impl Gap {
             unsafe { std::str::from_utf8_unchecked(&self.buf[self.end..]) },
         )
     }
+
+    // damn, rust so sick
+    pub fn lines(&self) -> Chain<Lines<'_>, Lines<'_>> {
+        let (a, b) = self.to_str();
+        a.lines().chain(b.lines())
+    }
 }
 
 #[cfg(test)]
@@ -252,5 +261,23 @@ mod tests {
         g.insert_str(7, " this grows the buffer");
         assert_eq!(g.buf.capacity(), 58);
         assert_eq!(g.to_str(), ("xyzabcd this grows the buffer", ""));
+    }
+
+    #[test]
+    fn test_gap_lines() {
+        let mut g = Gap::new(574);
+        g.insert_str(0, r#"Lorem Ipsum is simply dummy text of the printing and typesetting industry.
+Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book.
+It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged.
+It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum."#);
+
+        let mut it = g.lines();
+        assert_eq!(
+            it.next(),
+            Some("Lorem Ipsum is simply dummy text of the printing and typesetting industry.")
+        );
+        assert_eq!(it.next(), Some("Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book."));
+        assert_eq!(it.next(), Some("It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged."));
+        assert_eq!(it.next(), Some("It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum."));
     }
 }
