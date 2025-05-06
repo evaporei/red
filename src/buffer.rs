@@ -184,11 +184,11 @@ impl Gap {
             return;
         }
         self.shift_gap_to(self.buf.capacity() - gap_len);
-        let new_cap = 2 * (n_required + self.buf.capacity() + gap_len);
-        let mut data = Vec::with_capacity(new_cap);
-        data.extend_from_slice(&self.buf);
-        self.buf = data;
-        self.end = self.buf.len();
+        let old_cap = self.buf.capacity();
+        let new_cap = 2 * (n_required + old_cap - gap_len);
+        self.buf.reserve(new_cap - self.buf.capacity());
+        self.buf.extend(&vec![0; new_cap - old_cap]);
+        self.end = self.buf.capacity();
     }
 
     pub fn insert_char(&mut self, at: usize, ch: char) {
@@ -265,7 +265,10 @@ mod tests {
         assert_eq!(g.start, 0);
         assert_eq!(g.end, 12);
         g.insert_str(0, "xyz");
-        // dbg!(&g.buf);
         assert_eq!(g.to_str(), ("xyz", "abcd"));
+        g.insert_str(7, " this grows the buffer");
+        assert_eq!(g.len, 29);
+        assert_eq!(g.buf.capacity(), 58);
+        assert_eq!(g.to_str(), ("xyzabcd this grows the buffer", ""));
     }
 }
