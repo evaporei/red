@@ -192,11 +192,11 @@ impl Gap {
     }
 
     pub fn insert_char(&mut self, at: usize, ch: char) {
-        self.grow(1);
-        self.shift_gap_to(at);
         let mut tmp: [u8; 4] = [0; 4];
         let s = ch.encode_utf8(&mut tmp);
         let s_bytes = s.as_bytes();
+        self.grow(s_bytes.len());
+        self.shift_gap_to(at);
 
         for (i, t) in s_bytes.iter().enumerate() {
             self.buf[self.start + i] = *t;
@@ -206,9 +206,9 @@ impl Gap {
     }
 
     pub fn insert_str(&mut self, at: usize, s: &str) {
-        self.grow(1);
-        self.shift_gap_to(at);
         let s_bytes = s.as_bytes();
+        self.grow(s_bytes.len());
+        self.shift_gap_to(at);
         for (i, b) in s_bytes.iter().enumerate() {
             self.buf[self.start + i] = *b;
             self.len += 1;
