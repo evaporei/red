@@ -141,7 +141,6 @@ impl Buffer {
 
 pub struct Gap {
     pub(crate) buf: Vec<u8>,
-    pub(crate) len: usize,
     pub(crate) start: usize,
     pub(crate) end: usize,
 }
@@ -150,7 +149,6 @@ impl Gap {
     pub fn new(cap: usize) -> Self {
         Self {
             buf: vec![0; cap],
-            len: 0,
             start: 0,
             end: cap,
         }
@@ -200,7 +198,6 @@ impl Gap {
 
         for (i, t) in s_bytes.iter().enumerate() {
             self.buf[self.start + i] = *t;
-            self.len += 1;
         }
         self.start += s_bytes.len();
     }
@@ -211,7 +208,6 @@ impl Gap {
         self.shift_gap_to(at);
         for (i, b) in s_bytes.iter().enumerate() {
             self.buf[self.start + i] = *b;
-            self.len += 1;
         }
         self.start += s_bytes.len();
     }
@@ -219,9 +215,6 @@ impl Gap {
     // Safe because we only insert `char` and `&str`
     // which are both guaranteed to be utf8.
     pub fn to_str(&self) -> (&str, &str) {
-        if self.len == 0 {
-            return ("", "");
-        }
         if self.start == 0 {
             return ("", unsafe {
                 std::str::from_utf8_unchecked(&self.buf[self.end..])
@@ -248,17 +241,14 @@ mod tests {
     fn test_gap() {
         let mut g = Gap::new(16);
         assert_eq!(g.to_str(), ("", ""));
-        assert_eq!(g.len, 0);
         assert_eq!(g.buf.capacity(), 16);
         assert_eq!(g.start, 0);
         assert_eq!(g.end, 16);
         g.insert_char(0, 'a');
-        assert_eq!(g.len, 1);
         assert_eq!(g.buf.capacity(), 16);
         assert_eq!(g.start, 1);
         assert_eq!(g.end, 16);
         g.insert_str(1, "bcd");
-        assert_eq!(g.len, 4);
         assert_eq!(g.buf.capacity(), 16);
         assert_eq!(g.start, 4);
         assert_eq!(g.end, 16);
@@ -269,7 +259,6 @@ mod tests {
         g.insert_str(0, "xyz");
         assert_eq!(g.to_str(), ("xyz", "abcd"));
         g.insert_str(7, " this grows the buffer");
-        assert_eq!(g.len, 29);
         assert_eq!(g.buf.capacity(), 58);
         assert_eq!(g.to_str(), ("xyzabcd this grows the buffer", ""));
     }
