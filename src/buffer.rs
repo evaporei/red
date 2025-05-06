@@ -217,17 +217,6 @@ impl Gap {
     // Safe because we only insert `char` and `&str`
     // which are both guaranteed to be utf8.
     pub fn to_str(&self) -> (&str, &str) {
-        if self.start == 0 {
-            return ("", unsafe {
-                std::str::from_utf8_unchecked(&self.buf[self.end..])
-            });
-        }
-        if self.end == self.buf.capacity() {
-            return (
-                unsafe { std::str::from_utf8_unchecked(&self.buf[..self.start]) },
-                "",
-            );
-        }
         (
             unsafe { std::str::from_utf8_unchecked(&self.buf[..self.start]) },
             unsafe { std::str::from_utf8_unchecked(&self.buf[self.end..]) },
