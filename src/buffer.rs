@@ -140,6 +140,8 @@ impl Buffer {
 }
 
 pub struct Gap {
+    // We practically don't use .len()
+    // The non used characters are filled with zeroes.
     pub(crate) buf: Vec<u8>,
     pub(crate) start: usize,
     pub(crate) end: usize,
