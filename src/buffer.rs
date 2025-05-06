@@ -186,11 +186,8 @@ impl Gap {
         self.shift_gap_to(self.buf.capacity() - gap_len);
         let new_cap = 2 * (n_required + self.buf.capacity() - gap_len);
         self.buf.reserve(new_cap - self.buf.capacity());
-        self.buf.extend(
-            (0..self.buf.capacity() - self.buf.len())
-                .into_iter()
-                .map(|_| 0),
-        );
+        self.buf
+            .extend(std::iter::repeat(0).take(self.buf.capacity() - self.buf.len()));
         self.end = self.buf.capacity();
     }
 
