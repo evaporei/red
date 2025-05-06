@@ -161,22 +161,17 @@ impl Gap {
         if self.start == cursor {
             return;
         }
-        let ptr = self.buf.as_mut_ptr();
         if self.start < cursor {
             let delta = cursor - self.start;
             for i in 0..delta {
-                unsafe {
-                    *ptr.add(self.start + i) = self.buf[self.end + i];
-                }
+                self.buf[self.start + i] = self.buf[self.end + i];
             }
             self.start += delta;
             self.end += delta;
         } else {
             let delta = self.start - cursor;
             for i in 0..delta {
-                unsafe {
-                    *ptr.add(self.end - delta + i) = self.buf[self.start - delta + i];
-                }
+                self.buf[self.end - delta + i] = self.buf[self.start - delta + i];
             }
             self.start -= delta;
             self.end -= delta;
@@ -203,11 +198,8 @@ impl Gap {
         let s = ch.encode_utf8(&mut tmp);
         let s_bytes = s.as_bytes();
 
-        let ptr = self.buf.as_mut_ptr();
         for (i, t) in s_bytes.iter().enumerate() {
-            unsafe {
-                *ptr.add(self.start + i) = *t;
-            }
+            self.buf[self.start + i] = *t;
             self.len += 1;
         }
         self.start += s_bytes.len();
@@ -216,12 +208,9 @@ impl Gap {
     pub fn insert_str(&mut self, at: usize, s: &str) {
         self.grow(1);
         self.shift_gap_to(at);
-        let ptr = self.buf.as_mut_ptr();
         let s_bytes = s.as_bytes();
         for (i, b) in s_bytes.iter().enumerate() {
-            unsafe {
-                *ptr.add(self.start + i) = *b;
-            }
+            self.buf[self.start + i] = *b;
             self.len += 1;
         }
         self.start += s_bytes.len();
