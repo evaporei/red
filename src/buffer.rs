@@ -184,10 +184,13 @@ impl Gap {
             return;
         }
         self.shift_gap_to(self.buf.capacity() - gap_len);
-        let old_cap = self.buf.capacity();
-        let new_cap = 2 * (n_required + old_cap - gap_len);
+        let new_cap = 2 * (n_required + self.buf.capacity() - gap_len);
         self.buf.reserve(new_cap - self.buf.capacity());
-        self.buf.extend(&vec![0; new_cap - old_cap]);
+        self.buf.extend(
+            (0..self.buf.capacity() - self.buf.len())
+                .into_iter()
+                .map(|_| 0),
+        );
         self.end = self.buf.capacity();
     }
 
